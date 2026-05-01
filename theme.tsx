@@ -1,13 +1,9 @@
+// ============================================================
+// theme.tsx — UPDATED v2.3.0
+// Perubahan: dark mode sebagai DEFAULT
+// ============================================================
 import React, { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-type ThemeMode = "light" | "dark";
-
-type ThemeCtx = {
-  mode: ThemeMode;
-  toggleTheme: () => void;
-  C: typeof LIGHT;
-};
 
 export const LIGHT = {
   bg: "#FFFFFF",
@@ -71,20 +67,24 @@ export const DARK = {
   stripBg: "#18181B",
 };
 
-const ThemeContext = createContext<ThemeCtx | null>(null);
+const ThemeContext = createContext(null);
 const THEME_KEY = "smh_theme_mode";
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<ThemeMode>("light");
+export function ThemeProvider({ children }) {
+  // ← default "dark"
+  const [mode, setMode] = useState("dark");
 
   useEffect(() => {
     AsyncStorage.getItem(THEME_KEY).then((v) => {
+      // Jika user belum pernah set → tetap dark
       if (v === "dark" || v === "light") setMode(v);
+      // Jika belum ada nilai, simpan dark sebagai default
+      else AsyncStorage.setItem(THEME_KEY, "dark");
     });
   }, []);
 
   const toggleTheme = async () => {
-    const next: ThemeMode = mode === "light" ? "dark" : "light";
+    const next = mode === "light" ? "dark" : "light";
     setMode(next);
     await AsyncStorage.setItem(THEME_KEY, next);
   };
@@ -98,7 +98,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useTheme(): ThemeCtx {
+export function useTheme() {
   const c = useContext(ThemeContext);
   if (!c) throw new Error("useTheme must be used inside ThemeProvider");
   return c;
