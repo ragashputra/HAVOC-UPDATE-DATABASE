@@ -82,7 +82,7 @@ export default function TentangScreen() {
         </View>
 
         <Text style={[s.copyright, { color: C.textMuted }]}>
-          © 2024–2026 PT Capella Dinamik Nusantara.{"\n"}Dikembangkan oleh Ahmad Ragash Putra.
+          © 2026 PT Capella Dinamik Nusantara.{"\n"}Dikembangkan oleh Ahmad Ragash Putra.
         </Text>
 
         <View style={{ height: 24 }} />
