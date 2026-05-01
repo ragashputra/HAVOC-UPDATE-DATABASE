@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView,
   ActivityIndicator, Alert, Platform, KeyboardAvoidingView, Image,
-  Animated, Easing, Modal,
+  Animated, Easing, Modal, Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Audio } from "expo-av";
@@ -28,7 +28,6 @@ function formatNomorMesin(raw: string): string {
   return clean.slice(0, 5) + " " + clean.slice(5, 12);
 }
 
-// Loading overlay
 function LoadingOverlay({ visible, label, progress, C }: { visible: boolean; label: string; progress?: number; C: any }) {
   const spin = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(0)).current;
@@ -74,31 +73,58 @@ const ls = StyleSheet.create({
   pct: { fontSize: 16, fontWeight: "800" },
 });
 
-// Waveform visualization (iPhone-style)
+const BAR_COUNT = 32;
 function Waveform({ isRecording, C }: { isRecording: boolean; C: any }) {
-  const bars = Array.from({ length: 30 }, () => useRef(new Animated.Value(0.2)).current);
+  const bars = useRef(
+    Array.from({ length: BAR_COUNT }, () => new Animated.Value(0.15))
+  ).current;
+  const loopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     if (isRecording) {
-      const anims = bars.map((bar) => 
-        Animated.loop(
+      const buildLoop = () => {
+        const anims = bars.map((bar) =>
           Animated.sequence([
-            Animated.timing(bar, { toValue: Math.random() * 0.8 + 0.2, duration: 150, useNativeDriver: true }),
-            Animated.timing(bar, { toValue: Math.random() * 0.5 + 0.1, duration: 150, useNativeDriver: true }),
+            Animated.timing(bar, {
+              toValue: Math.random() * 0.85 + 0.15,
+              duration: 100 + Math.random() * 120,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: false,
+            }),
+            Animated.timing(bar, {
+              toValue: Math.random() * 0.35 + 0.1,
+              duration: 100 + Math.random() * 120,
+              easing: Easing.in(Easing.quad),
+              useNativeDriver: false,
+            }),
           ])
-        )
-      );
-      anims.forEach((a, i) => setTimeout(() => a.start(), i * 30));
-      return () => anims.forEach(a => a.stop());
+        );
+        loopRef.current = Animated.loop(Animated.stagger(20, anims));
+        loopRef.current.start();
+      };
+      buildLoop();
     } else {
-      bars.forEach(bar => Animated.timing(bar, { toValue: 0.2, duration: 200, useNativeDriver: true }).start());
+      loopRef.current?.stop();
+      bars.forEach((bar) =>
+        Animated.timing(bar, { toValue: 0.1, duration: 200, useNativeDriver: false }).start()
+      );
     }
+    return () => { loopRef.current?.stop(); };
   }, [isRecording]);
 
   return (
     <View style={wf.container}>
       {bars.map((bar, i) => (
-        <Animated.View key={i} style={[wf.bar, { backgroundColor: C.accentRecord, transform: [{ scaleY: bar }] }]} />
+        <Animated.View
+          key={i}
+          style={[
+            wf.bar,
+            {
+              backgroundColor: isRecording ? C.accentSuccess : C.border,
+              height: bar.interpolate({ inputRange: [0, 1], outputRange: [3, 38] }),
+            },
+          ]}
+        />
       ))}
     </View>
   );
@@ -106,93 +132,124 @@ function Waveform({ isRecording, C }: { isRecording: boolean; C: any }) {
 
 const wf = StyleSheet.create({
   container: { flexDirection: "row", alignItems: "center", justifyContent: "center", height: 50, gap: 3 },
-  bar: { width: 3, height: 44, borderRadius: 2 },
+  bar: { width: 3.5, borderRadius: 2, minHeight: 3 },
 });
 
-// Playback bar dengan scrub yang fixed
 function PlaybackBar({ uri, durationMs, C, onDelete }: { uri: string; durationMs: number; C: any; onDelete: () => void }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [posMs, setPosMs] = useState(0);
   const [totalMs, setTotalMs] = useState(durationMs || 0);
+
   const soundRef = useRef<Audio.Sound | null>(null);
-  const updateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const barWidthRef = useRef(300);
+  const isPlayingRef = useRef(false);
+  const totalMsRef = useRef(durationMs || 0);
+
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+  useEffect(() => { totalMsRef.current = totalMs; }, [totalMs]);
 
   useEffect(() => {
     return () => {
-      if (updateTimerRef.current) clearInterval(updateTimerRef.current);
+      tickRef.current && clearInterval(tickRef.current);
       soundRef.current?.unloadAsync().catch(() => {});
     };
   }, []);
 
-  const loadSound = async () => {
-    if (soundRef.current) return soundRef.current;
-    const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: false });
-    soundRef.current = sound;
-    const status = await sound.getStatusAsync();
-    if (status.isLoaded && status.durationMillis) setTotalMs(status.durationMillis);
-    sound.setOnPlaybackStatusUpdate((s) => {
-      if (s.isLoaded) {
-        if (s.didJustFinish) {
+  const stopTick = useCallback(() => {
+    if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
+  }, []);
+
+  const startTick = useCallback((sound: Audio.Sound) => {
+    stopTick();
+    tickRef.current = setInterval(async () => {
+      try {
+        const st = await sound.getStatusAsync();
+        if (!st.isLoaded) return;
+        setPosMs(st.positionMillis ?? 0);
+        if (st.didJustFinish || (!st.isPlaying && (st.positionMillis ?? 0) >= totalMsRef.current - 300)) {
           setIsPlaying(false);
           setPosMs(0);
-          sound.setPositionAsync(0);
-          if (updateTimerRef.current) { clearInterval(updateTimerRef.current); updateTimerRef.current = null; }
+          stopTick();
+          await sound.setPositionAsync(0).catch(() => {});
         }
-      }
-    });
-    return sound;
-  };
+      } catch { stopTick(); }
+    }, 100);
+  }, [stopTick]);
 
-  const togglePlay = async () => {
+  const getSound = useCallback(async (): Promise<Audio.Sound> => {
+    if (soundRef.current) return soundRef.current;
+    await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
+    const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: false });
+    soundRef.current = sound;
+    const st = await sound.getStatusAsync();
+    if (st.isLoaded && st.durationMillis) {
+      setTotalMs(st.durationMillis);
+      totalMsRef.current = st.durationMillis;
+    }
+    return sound;
+  }, [uri]);
+
+  const togglePlay = useCallback(async () => {
     try {
-      const sound = await loadSound();
-      if (isPlaying) {
+      const sound = await getSound();
+      const st = await sound.getStatusAsync();
+      if (!st.isLoaded) return;
+      if (isPlayingRef.current) {
         await sound.pauseAsync();
         setIsPlaying(false);
-        if (updateTimerRef.current) { clearInterval(updateTimerRef.current); updateTimerRef.current = null; }
+        stopTick();
       } else {
+        const pos = st.isLoaded ? (st as any).positionMillis ?? 0 : 0;
+        if (pos >= totalMsRef.current - 300) {
+          await sound.setPositionAsync(0);
+          setPosMs(0);
+        }
         await sound.playAsync();
         setIsPlaying(true);
-        updateTimerRef.current = setInterval(async () => {
-          const status = await sound.getStatusAsync();
-          if (status.isLoaded) setPosMs(status.positionMillis ?? 0);
-        }, 200);
+        startTick(sound);
       }
-    } catch (e: any) { Alert.alert("Error", "Gagal memutar audio"); }
-  };
+    } catch { Alert.alert("Error", "Gagal memutar audio"); }
+  }, [getSound, stopTick, startTick]);
 
-  const onSeek = async (evt: any) => {
-    const x = evt.nativeEvent.locationX;
-    const width = evt.nativeEvent.target.measure ? 300 : 260; // fallback
-    const ratio = Math.max(0, Math.min(1, x / width));
-    const ms = Math.floor(ratio * totalMs);
+  const seekTo = useCallback(async (ratio: number) => {
+    const ms = Math.floor(Math.max(0, Math.min(1, ratio)) * totalMsRef.current);
     setPosMs(ms);
     try {
-      const sound = await loadSound();
+      const sound = await getSound();
       await sound.setPositionAsync(ms);
+      if (isPlayingRef.current) startTick(sound);
     } catch {}
-  };
+  }, [getSound, startTick]);
 
-  const progress = totalMs > 0 ? posMs / totalMs : 0;
+  const onBarPress = useCallback((evt: any) => {
+    const x = evt.nativeEvent.locationX;
+    seekTo(x / barWidthRef.current);
+  }, [seekTo]);
+
+  const progress = totalMs > 0 ? Math.min(1, posMs / totalMs) : 0;
 
   return (
     <View style={[pb.container, { backgroundColor: C.surface, borderColor: C.border }]}>
-      <TouchableOpacity onPress={togglePlay} style={[pb.playBtn, { backgroundColor: C.primary }]}>
-        <Ionicons name={isPlaying ? "pause" : "play"} size={20} color={C.primaryFg} />
+      <TouchableOpacity onPress={togglePlay} style={[pb.playBtn, { backgroundColor: C.accentSuccess }]}>
+        <Ionicons name={isPlaying ? "pause" : "play"} size={18} color="#fff" />
       </TouchableOpacity>
-      <View style={{ flex: 1, gap: 6 }}>
-        <TouchableOpacity activeOpacity={1} onPress={onSeek}>
-          <View style={[pb.bar, { backgroundColor: C.inputBg }]}>
-            <View style={[pb.fill, { width: `${progress * 100}%` as any, backgroundColor: C.accentRecord }]} />
-            <View style={[pb.thumb, { left: `${progress * 100}%` as any, backgroundColor: C.accentRecord }]} />
-          </View>
+      <View style={{ flex: 1, gap: 4 }}>
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={onBarPress}
+          style={[pb.bar, { backgroundColor: C.inputBg }]}
+          onLayout={(e) => { barWidthRef.current = e.nativeEvent.layout.width; }}
+        >
+          <View style={[pb.fill, { width: `${progress * 100}%` as any, backgroundColor: C.accentSuccess }]} />
+          <View style={[pb.thumb, { left: `${progress * 100}%` as any, backgroundColor: C.accentSuccess }]} />
         </TouchableOpacity>
         <View style={pb.timeRow}>
-          <Text style={[pb.timeText, { color: C.textSecondary }]}>{formatTime(posMs)}</Text>
+          <Text style={[pb.timeText, { color: C.textMuted }]}>{formatTime(posMs)}</Text>
           <Text style={[pb.timeText, { color: C.textMuted }]}>{formatTime(totalMs)}</Text>
         </View>
       </View>
-      <TouchableOpacity onPress={onDelete} style={[pb.trashBtn, { borderColor: C.border }]}>
+      <TouchableOpacity onPress={onDelete} style={[pb.trashBtn, { borderColor: C.border, backgroundColor: C.deleteBtn }]}>
         <Ionicons name="trash-outline" size={16} color={C.accentRecord} />
       </TouchableOpacity>
     </View>
@@ -202,9 +259,9 @@ function PlaybackBar({ uri, durationMs, C, onDelete }: { uri: string; durationMs
 const pb = StyleSheet.create({
   container: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 14, borderWidth: 1 },
   playBtn: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center" },
-  bar: { height: 5, borderRadius: 3, position: "relative", overflow: "visible" },
-  fill: { height: 5, borderRadius: 3, position: "absolute", top: 0, left: 0 },
-  thumb: { width: 14, height: 14, borderRadius: 7, position: "absolute", top: -4.5, marginLeft: -7 },
+  bar: { height: 6, borderRadius: 3, position: "relative", overflow: "visible" },
+  fill: { height: 6, borderRadius: 3, position: "absolute", top: 0, left: 0 },
+  thumb: { width: 14, height: 14, borderRadius: 7, position: "absolute", top: -4, marginLeft: -7 },
   timeRow: { flexDirection: "row", justifyContent: "space-between" },
   timeText: { fontSize: 10, fontWeight: "600", fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" },
   trashBtn: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1 },
@@ -240,10 +297,12 @@ export default function Index() {
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startTimeRef = useRef<number>(0);
+  const startTimeRef = useRef(0);
   const menuAnim = useRef(new Animated.Value(0)).current;
 
-  const canUpload = !!recordingUri && !!namaKonsumen.trim() && nomorMesin.replace(/\s/g, "").length === 12 && driveConnected;
+  const rawMesin = nomorMesin.replace(/\s/g, "");
+  const canUpload = !!recordingUri && !!namaKonsumen.trim() && rawMesin.length === 12 && driveConnected;
+  const mesinKeyboardType = rawMesin.length >= 5 ? "numeric" : "default";
 
   const openMenu = () => {
     setMenuVisible(true);
@@ -293,10 +352,12 @@ export default function Index() {
   const handleDisconnectDrive = () => {
     Alert.alert("Putuskan Drive?", "Anda perlu menghubungkan ulang nanti.", [
       { text: "Batal", style: "cancel" },
-      { text: "Putuskan", style: "destructive", onPress: async () => {
+      {
+        text: "Putuskan", style: "destructive", onPress: async () => {
           await authFetch(token, `${APP_BACKEND_URL}/api/drive/disconnect`, { method: "POST" });
           setDriveConnected(false); setDriveEmail(null);
-        } },
+        }
+      },
     ]);
   };
 
@@ -308,488 +369,360 @@ export default function Index() {
       const { recording } = await Audio.Recording.createAsync({
         ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
         android: { ...Audio.RecordingOptionsPresets.HIGH_QUALITY.android, extension: ".mp4", outputFormat: Audio.AndroidOutputFormat.MPEG_4, audioEncoder: Audio.AndroidAudioEncoder.AAC },
-        ios: { ...Audio.RecordingOptionsPresets.HIGH_QUALITY.ios, extension: ".mp4", outputFormat: Audio.IOSOutputFormat.MPEG4AAC },
+        ios: { ...Audio.RecordingOptionsPresets.HIGH_QUALITY.ios, extension: ".m4a" },
       });
       recordingRef.current = recording;
       startTimeRef.current = Date.now();
-      setRecordingMs(0); setIsRecording(true); setRecordingName(null);
-      timerRef.current = setInterval(() => setRecordingMs(Date.now() - startTimeRef.current), 200);
-    } catch (e: any) { Alert.alert("Error", "Gagal memulai rekaman: " + (e?.message ?? e)); }
+      setIsRecording(true);
+      setRecordingMs(0);
+      setRecordingUri(null);
+      setRecordingName(null);
+      timerRef.current = setInterval(() => {
+        setRecordingMs(Date.now() - startTimeRef.current);
+      }, 100);
+    } catch (e: any) { Alert.alert("Gagal", e?.message ?? "Tidak bisa memulai rekaman"); }
   };
 
   const stopRecording = async () => {
     try {
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-      const rec = recordingRef.current; if (!rec) return;
-      await rec.stopAndUnloadAsync();
-      const uri = rec.getURI();
-      recordingRef.current = null; setIsRecording(false);
-      if (uri) { setRecordingUri(uri); setRecordingName(null); }
+      setIsRecording(false);
+      if (!recordingRef.current) return;
+      await recordingRef.current.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      const uri = recordingRef.current.getURI();
+      recordingRef.current = null;
+      if (!uri) return;
+      const ts = Date.now();
+      const ext = Platform.OS === "ios" ? "m4a" : "mp4";
+      const name = `REC_${ts}.${ext}`;
+      const dest = `${FileSystem.documentDirectory}${name}`;
+      await FileSystem.moveAsync({ from: uri, to: dest });
+      setRecordingUri(dest);
+      setRecordingName(name);
+    } catch (e: any) { Alert.alert("Gagal", e?.message ?? "Gagal menyimpan rekaman"); }
+  };
+
+  const pickAudio = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({ type: ["audio/*", "video/mp4"], copyToCacheDirectory: true });
+      if (res.canceled || !res.assets?.[0]) return;
+      const asset = res.assets[0];
+      const ext = asset.name.split(".").pop()?.toLowerCase() ?? "mp4";
+      const allowed = ["mp3", "m4a", "mp4", "aac", "wav", "ogg", "opus", "3gp", "amr"];
+      if (!allowed.includes(ext)) { Alert.alert("Format tidak didukung", `File .${ext} tidak bisa diupload.`); return; }
+      setRecordingUri(asset.uri);
+      setRecordingName(asset.name);
+    } catch (e: any) { Alert.alert("Gagal", e?.message ?? "Tidak bisa membuka file"); }
+  };
+
+  const pickCdbPhoto = async () => {
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        const gallPerm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!gallPerm.granted) { Alert.alert("Izin Ditolak", "Akses kamera/galeri dibutuhkan"); return; }
+        const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: false, quality: 0.85 });
+        if (!res.canceled && res.assets?.[0]) { setCdbPhoto(res.assets[0].uri); setCdbPhotoName(`CDB_${Date.now()}.jpg`); }
+        return;
+      }
+      const res = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: false, quality: 0.85 });
+      if (!res.canceled && res.assets?.[0]) { setCdbPhoto(res.assets[0].uri); setCdbPhotoName(`CDB_${Date.now()}.jpg`); }
+    } catch (e: any) { Alert.alert("Gagal", e?.message ?? "Gagal ambil foto"); }
+  };
+
+  const handleUpload = async () => {
+    if (!canUpload || !recordingUri) return;
+    setUploading(true); setUploadProgress(0); setUploadLabel("Mengupload rekaman...");
+    try {
+      const ext = recordingUri.split(".").pop() ?? "mp4";
+      const mime = ext === "m4a" ? "audio/m4a" : ext === "mp3" ? "audio/mpeg" : "video/mp4";
+      const formData = new FormData();
+      formData.append("nama_konsumen", namaKonsumen.trim());
+      formData.append("nomor_mesin", rawMesin);
+      formData.append("audio", { uri: recordingUri, name: recordingName ?? `rec.${ext}`, type: mime } as any);
+      let prog = 0;
+      const progInt = setInterval(() => { prog = Math.min(prog + 0.04, 0.88); setUploadProgress(prog); }, 300);
+      const res = await authFetch(token, `${APP_BACKEND_URL}/api/uploads/audio`, { method: "POST", body: formData });
+      clearInterval(progInt);
+      const data = await res.json();
+      if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Upload gagal");
+      setUploadProgress(1);
+
+      if (cdbPhoto && cdbPhotoName) {
+        setUploadLabel("Mengupload foto CDB..."); setUploadProgress(0);
+        const photoForm = new FormData();
+        photoForm.append("nama_konsumen", namaKonsumen.trim());
+        photoForm.append("nomor_mesin", rawMesin);
+        photoForm.append("photo", { uri: cdbPhoto, name: cdbPhotoName, type: "image/jpeg" } as any);
+        let p2 = 0;
+        const p2Int = setInterval(() => { p2 = Math.min(p2 + 0.06, 0.88); setUploadProgress(p2); }, 200);
+        const res2 = await authFetch(token, `${APP_BACKEND_URL}/api/uploads/photo`, { method: "POST", body: photoForm });
+        clearInterval(p2Int);
+        const d2 = await res2.json();
+        if (!res2.ok) throw new Error(typeof d2.detail === "string" ? d2.detail : "Upload foto gagal");
+        setUploadProgress(1);
+      }
+
+      setTimeout(() => {
+        setUploading(false);
+        Alert.alert("Berhasil!", `File berhasil diupload ke Google Drive.\nNomor mesin: ${rawMesin}`, [
+          { text: "OK", onPress: () => { setNamaKonsumen(""); setNomorMesin(""); setRecordingUri(null); setRecordingName(null); setCdbPhoto(null); setCdbPhotoName(null); } }
+        ]);
+      }, 600);
     } catch (e: any) {
-      Alert.alert("Error", "Gagal menghentikan rekaman: " + (e?.message ?? e)); setIsRecording(false);
+      setUploading(false);
+      Alert.alert("Gagal Upload", e?.message ?? "Terjadi kesalahan");
     }
   };
 
-  const browseAudioFile = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({ type: ["audio/*"], copyToCacheDirectory: true });
-      if (!result.canceled && result.assets?.[0]) {
-        const asset = result.assets[0];
-        setRecordingUri(asset.uri);
-        setRecordingName(asset.name ?? "File Audio");
-        setRecordingMs(0);
-      }
-    } catch (e: any) { Alert.alert("Error", "Gagal memilih file: " + (e?.message ?? e)); }
-  };
-
-  const deleteRecording = () => {
-    Alert.alert("Hapus Rekaman?", "", [
-      { text: "Batal", style: "cancel" },
-      { text: "Hapus", style: "destructive", onPress: () => {
-          setRecordingUri(null); setRecordingName(null); setRecordingMs(0);
-        } },
-    ]);
-  };
-
-  const handleScanCDB = async () => {
-    try {
-      const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) { Alert.alert("Izin Kamera", "Izinkan akses kamera."); return; }
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["images"] as ImagePicker.MediaType[], quality: 0.92, allowsEditing: false,
-      });
-      if (!result.canceled && result.assets[0]) { setCdbPhoto(result.assets[0].uri); setCdbPhotoName(null); }
-    } catch (e: any) { Alert.alert("Error", "Gagal mengambil foto: " + (e?.message ?? e)); }
-  };
-
-  const browseCdbPhoto = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({ type: ["image/*"], copyToCacheDirectory: true });
-      if (!result.canceled && result.assets?.[0]) {
-        const asset = result.assets[0];
-        setCdbPhoto(asset.uri); setCdbPhotoName(asset.name ?? "Foto CDB");
-      }
-    } catch (e: any) { Alert.alert("Error", "Gagal memilih foto: " + (e?.message ?? e)); }
-  };
-
-  const deleteCdbPhoto = () => {
-    Alert.alert("Hapus Foto CDB?", "", [
-      { text: "Batal", style: "cancel" },
-      { text: "Hapus", style: "destructive", onPress: () => { setCdbPhoto(null); setCdbPhotoName(null); } },
-    ]);
-  };
-
-  const uploadToDrive = async () => {
-    if (!recordingUri) return;
-    if (!namaKonsumen.trim()) { Alert.alert("Wajib diisi", "Mohon isi Nama Konsumen."); return; }
-    if (!nomorMesin.trim()) { Alert.alert("Wajib diisi", "Mohon isi Nomor Mesin SMH."); return; }
-    const cleanMesin = nomorMesin.replace(/\s/g, "");
-    if (cleanMesin.length !== 12) { Alert.alert("Nomor Mesin", `Harus 12 karakter. Sekarang: ${cleanMesin.length}`); return; }
-    if (!driveConnected) { Alert.alert("Drive Belum Terhubung", "Hubungkan Google Drive dulu."); return; }
-
-    try {
-      setUploading(true); setUploadProgress(0);
-      setUploadLabel("Mengupload rekaman suara...");
-      setUploadProgress(0.1);
-      const audioFilename = `${namaKonsumen.trim()}.mp3`;
-      const formData = new FormData();
-      formData.append("nama_konsumen", namaKonsumen.trim());
-      formData.append("nomor_mesin", nomorMesin.trim());
-      if (Platform.OS === "web") {
-        const blobRes = await fetch(recordingUri);
-        const blob = await blobRes.blob();
-        formData.append("file", new File([blob], audioFilename, { type: "audio/mpeg" }));
-      } else {
-        const info = await FileSystem.getInfoAsync(recordingUri);
-        if (!info.exists) throw new Error("File rekaman tidak ditemukan");
-        formData.append("file", { uri: recordingUri, name: audioFilename, type: "audio/mpeg" } as any);
-      }
-      setUploadProgress(0.35);
-      const res = await authFetch(token, `${APP_BACKEND_URL}/api/drive/upload`, { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Upload rekaman gagal");
-      setUploadProgress(0.6);
-
-      if (cdbPhoto) {
-        setUploadLabel("Mengupload foto CDB...");
-        setUploadProgress(0.65);
-        const cdbFilename = `${namaKonsumen.trim()} - CDB.jpg`;
-        const cdbForm = new FormData();
-        cdbForm.append("nama_konsumen", namaKonsumen.trim());
-        cdbForm.append("nomor_mesin", nomorMesin.trim());
-        cdbForm.append("file_type", "cdb_photo");
-        if (Platform.OS === "web") {
-          const blobRes2 = await fetch(cdbPhoto);
-          const blob2 = await blobRes2.blob();
-          cdbForm.append("file", new File([blob2], cdbFilename, { type: "image/jpeg" }));
-        } else {
-          cdbForm.append("file", { uri: cdbPhoto, name: cdbFilename, type: "image/jpeg" } as any);
-        }
-        setUploadProgress(0.8);
-        const res2 = await authFetch(token, `${APP_BACKEND_URL}/api/drive/upload`, { method: "POST", body: cdbForm });
-        const data2 = await res2.json();
-        if (!res2.ok) throw new Error(data2.detail || "Upload foto CDB gagal");
-      }
-
-      setUploadProgress(1.0); setUploadLabel("Berhasil!");
-      await new Promise(r => setTimeout(r, 500));
-      Alert.alert("Upload Berhasil!", `File berhasil diupload ke Google Drive.\nFolder: ${nomorMesin.trim()}`, [
-        { text: "OK", onPress: () => {
-            setRecordingUri(null); setRecordingName(null); setRecordingMs(0);
-            setCdbPhoto(null); setCdbPhotoName(null);
-            setNamaKonsumen(""); setNomorMesin("");
-          } },
-      ]);
-    } catch (e: any) { Alert.alert("Upload Gagal", e?.message ?? "Terjadi kesalahan"); }
-    finally { setUploading(false); setUploadProgress(0); }
-  };
-
   const menuScale = menuAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] });
-  const menuOpacity = menuAnim;
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: C.bg }]}>
-      <LoadingOverlay visible={uploading} label={uploadLabel} progress={uploadProgress} C={C} />
+    <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
+      <View style={[s.header, { backgroundColor: C.headerBg, borderBottomColor: C.border }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={[s.headerTitle, { color: C.textPrimary }]}>Honda Visual On-site Capture</Text>
+          <Text style={[s.headerSub, { color: C.textMuted }]}>{user?.unit_usaha ?? user?.email ?? ""}</Text>
+        </View>
+        <View style={s.themeRow}>
+          <Ionicons name={isDark ? "moon" : "sunny"} size={14} color={C.textMuted} />
+          <Switch
+            value={isDark}
+            onValueChange={toggleTheme}
+            trackColor={{ false: "#E4E4E7", true: "#34C759" }}
+            thumbColor="#fff"
+            ios_backgroundColor="#E4E4E7"
+            style={{ transform: [{ scaleX: 0.78 }, { scaleY: 0.78 }] }}
+          />
+        </View>
+        <TouchableOpacity onPress={openMenu} style={[s.iconBtn, { borderColor: C.border }]}>
+          <Ionicons name="ellipsis-horizontal" size={18} color={C.textPrimary} />
+        </TouchableOpacity>
+      </View>
+
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView contentContainerStyle={[s.content, { backgroundColor: C.bg }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-        {/* ── Header ── */}
-        <View style={[styles.header, { backgroundColor: C.headerBg, borderBottomColor: C.border }]}>
-          <View style={styles.headerLeft}>
-            <Image
-              source={{ uri: "https://customer-assets.emergentagent.com/job_audio-archiver/artifacts/o8vroxrg_LOGO%20APLIKASIKU.png" }}
-              style={styles.logoImg} resizeMode="contain"
-            />
-            <View style={{ flexShrink: 1 }}>
-              <Text style={[styles.headerTitle, { color: C.textPrimary }]} numberOfLines={1}>Perekam Verifikasi Data Konsumen</Text>
-              <Text style={[styles.headerSubtitle, { color: C.textSecondary }]} numberOfLines={1}>PT Capella Dinamik Nusantara</Text>
+          {checkingStatus ? (
+            <View style={[s.driveCard, { backgroundColor: C.surface, borderColor: C.border }]}>
+              <ActivityIndicator size="small" color={C.textMuted} />
+              <Text style={[s.driveText, { color: C.textMuted }]}>Mengecek koneksi Drive...</Text>
             </View>
-          </View>
-          <View style={styles.headerRight}>
-            {/* Theme toggle - text + icon */}
-            <TouchableOpacity onPress={toggleTheme} style={[styles.themeToggle, { backgroundColor: C.surface, borderColor: C.border }]}>
-              <Ionicons name={isDark ? "sunny" : "moon-outline"} size={13} color={isDark ? "#FBBF24" : C.textSecondary} />
-              <Text style={[styles.themeText, { color: C.textSecondary }]}>{isDark ? "Light" : "Dark"}</Text>
+          ) : driveConnected ? (
+            <TouchableOpacity onPress={handleDisconnectDrive} style={[s.driveCard, { backgroundColor: C.connectedHintBg, borderColor: C.accentSuccess }]}>
+              <Ionicons name="checkmark-circle" size={16} color={C.accentSuccess} />
+              <Text style={[s.driveText, { color: C.accentSuccess, flex: 1 }]} numberOfLines={1}>Drive: {driveEmail}</Text>
+              <Ionicons name="chevron-forward" size={14} color={C.accentSuccess} />
             </TouchableOpacity>
-            {/* Drive status */}
-            {checkingStatus ? <ActivityIndicator size="small" color={C.textMuted} /> :
-              driveConnected ? (
-                <TouchableOpacity onPress={handleDisconnectDrive} style={[styles.pill, { backgroundColor: C.badgeSuccessBg, borderColor: C.accentSuccess }]}>
-                  <Ionicons name="cloud-done" size={12} color={C.accentSuccess} />
-                  <Text style={[styles.pillText, { color: C.accentSuccess }]}>Drive</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity onPress={refreshDriveStatus} style={[styles.pill, { backgroundColor: C.surface, borderColor: C.border }]}>
-                  <Ionicons name="cloud-offline-outline" size={12} color={C.textMuted} />
-                </TouchableOpacity>
-              )
-            }
-            {/* Menu — minimalis 3 dot */}
-            <TouchableOpacity style={[styles.pill, { backgroundColor: C.surface, borderColor: C.border }]} onPress={openMenu}>
-              <View style={styles.dots}>
-                {[0,1,2].map(i => <View key={i} style={[styles.dot, { backgroundColor: C.textSecondary }]} />)}
-              </View>
+          ) : (
+            <TouchableOpacity onPress={handleConnectDrive} disabled={connecting} style={[s.driveCard, { backgroundColor: C.surface, borderColor: C.accentDrive }]}>
+              {connecting ? <ActivityIndicator size="small" color={C.accentDrive} /> : <Ionicons name="logo-google" size={16} color={C.accentDrive} />}
+              <Text style={[s.driveText, { color: C.accentDrive, fontWeight: "700" }]}>{connecting ? "Menghubungkan..." : "Hubungkan Google Drive"}</Text>
             </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* ── User strip ── */}
-        <View style={[styles.userStrip, { backgroundColor: C.stripBg, borderBottomColor: C.border }]}>
-          <View style={[styles.avatarSmall, { backgroundColor: C.primary }]}>
-            <Text style={[styles.avatarSmallText, { color: C.primaryFg }]}>{(user?.nama_lengkap ?? "U")[0]}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.userName, { color: C.textPrimary }]} numberOfLines={1}>{user?.nama_lengkap}</Text>
-            <Text style={[styles.userEmail, { color: C.textSecondary }]} numberOfLines={1}>{user?.email}</Text>
-          </View>
-          <TouchableOpacity style={[styles.pill, { backgroundColor: C.surface, borderColor: C.border, gap: 4, paddingHorizontal: 10 }]} onPress={() => router.push("/history")}>
-            <Ionicons name="time-outline" size={13} color={C.textSecondary} />
-            <Text style={[styles.pillText, { color: C.textSecondary }]}>Riwayat</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Dropdown Menu ── */}
-        <Modal visible={menuVisible} transparent animationType="none" onRequestClose={closeMenu}>
-          <TouchableOpacity style={styles.menuBackdrop} activeOpacity={1} onPress={closeMenu}>
-            <Animated.View style={[styles.menuBox, { backgroundColor: C.menuBg, borderColor: C.border, opacity: menuOpacity, transform: [{ scale: menuScale }, { translateY: menuAnim.interpolate({ inputRange: [0,1], outputRange: [-8, 0] }) }] }]}>
-              {[
-                { icon: "person-outline", label: "Profil / Akun", route: "/profile" },
-                { icon: "lock-closed-outline", label: "Ganti Password", route: "/ganti-password" },
-                { icon: "folder-outline", label: "Folder Google Drive", route: "/folder-drive" },
-                { icon: "information-circle-outline", label: "Tentang Aplikasi", route: "/tentang" },
-              ].map((item, i) => (
-                <TouchableOpacity key={i} style={[styles.menuItem, { borderBottomColor: C.border }]} onPress={() => { closeMenu(); setTimeout(() => router.push(item.route as any), 150); }}>
-                  <View style={[styles.menuIconWrap, { backgroundColor: C.surface }]}>
-                    <Ionicons name={item.icon as any} size={16} color={C.textPrimary} />
-                  </View>
-                  <Text style={[styles.menuItemText, { color: C.textPrimary }]}>{item.label}</Text>
-                  <Ionicons name="chevron-forward" size={14} color={C.textMuted} />
-                </TouchableOpacity>
-              ))}
-              <View style={[styles.menuDivider, { backgroundColor: C.border }]} />
-              <TouchableOpacity style={[styles.menuItem, { borderBottomColor: "transparent" }]} onPress={() => {
-                closeMenu();
-                setTimeout(() => Alert.alert("Keluar?", "Anda akan logout.", [
-                  { text: "Batal", style: "cancel" },
-                  { text: "Keluar", style: "destructive", onPress: () => logout() },
-                ]), 150);
-              }}>
-                <View style={[styles.menuIconWrap, { backgroundColor: isDark ? "#2D0D0D" : "#FFF1F2" }]}>
-                  <Ionicons name="log-out-outline" size={16} color={C.accentRecord} />
-                </View>
-                <Text style={[styles.menuItemText, { color: C.accentRecord }]}>Keluar</Text>
-              </TouchableOpacity>
-            </Animated.View>
-          </TouchableOpacity>
-        </Modal>
-
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          decelerationRate="fast"
-        >
-
-          {/* Drive connect card */}
-          {!driveConnected && (
-            <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
-              <View style={styles.cardRow}>
-                <Ionicons name="logo-google" size={18} color={C.accentDrive} />
-                <Text style={[styles.cardTitle, { color: C.textPrimary }]}>Hubungkan Google Drive</Text>
-              </View>
-              <Text style={[styles.cardDesc, { color: C.textSecondary }]}>File rekaman & foto CDB akan diupload ke Drive.</Text>
-              <View style={styles.btnRow}>
-                <TouchableOpacity style={[styles.btnPrimary, { backgroundColor: C.accentDrive, flex: 1 }]} onPress={handleConnectDrive} disabled={connecting}>
-                  {connecting ? <ActivityIndicator color="#fff" size="small" /> : (
-                    <><Ionicons name="link" size={14} color="#fff" /><Text style={[styles.btnPrimaryText, { color: "#fff" }]}>Hubungkan</Text></>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.btnIcon, { borderColor: C.border, backgroundColor: C.bg }]} onPress={refreshDriveStatus} disabled={checkingStatus}>
-                  {checkingStatus ? <ActivityIndicator color={C.textMuted} size="small" /> : <Ionicons name="refresh" size={16} color={C.textMuted} />}
-                </TouchableOpacity>
-              </View>
-            </View>
           )}
 
-          {driveConnected && driveEmail && (
-            <View style={[styles.connectedHint, { backgroundColor: C.connectedHintBg, borderColor: C.accentSuccess }]}>
-              <Ionicons name="checkmark-circle" size={14} color={C.accentSuccess} />
-              <Text style={[styles.connectedText, { color: C.accentSuccess }]} numberOfLines={1}>Drive: {driveEmail}</Text>
-            </View>
-          )}
-
-          {/* Form */}
-          <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
-            <Text style={[styles.label, { color: C.textSecondary }]}>NAMA KONSUMEN</Text>
+          <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
+            <Text style={[s.label, { color: C.textMuted }]}>NAMA KONSUMEN</Text>
             <TextInput
-              style={[styles.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
-              placeholder="Contoh: AHMAD RAGASH PUTRA" placeholderTextColor={C.textMuted}
-              value={namaKonsumen} onChangeText={(t) => setNamaKonsumen(t.toUpperCase())}
-              autoCapitalize="characters" editable={!isRecording && !uploading}
+              style={[s.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
+              value={namaKonsumen}
+              onChangeText={setNamaKonsumen}
+              placeholder="Nama lengkap konsumen"
+              placeholderTextColor={C.textMuted}
+              autoCapitalize="words"
             />
-            <Text style={[styles.label, { color: C.textSecondary, marginTop: 10 }]}>NOMOR MESIN SMH</Text>
+            <Text style={[s.label, { color: C.textMuted, marginTop: 6 }]}>NOMOR MESIN (12 KARAKTER)</Text>
             <TextInput
-              style={[styles.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
-              placeholder="Contoh: JMH2E 1234567" placeholderTextColor={C.textMuted}
+              style={[s.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", letterSpacing: 2 }]}
               value={nomorMesin}
               onChangeText={(t) => {
-                const formatted = formatNomorMesin(t);
-                if (formatted.replace(/\s/g, "").length <= 12) setNomorMesin(formatted);
+                const fmt = formatNomorMesin(t);
+                if (fmt.replace(/\s/g, "").length <= 12) setNomorMesin(fmt);
               }}
-              keyboardType={nomorMesin.replace(/\s/g, "").length >= 5 ? "numeric" : "default"}
-              autoCapitalize="characters" editable={!isRecording && !uploading} maxLength={13}
+              placeholder="XXXXX 0000000"
+              placeholderTextColor={C.textMuted}
+              autoCapitalize="characters"
+              keyboardType={mesinKeyboardType}
+              maxLength={13}
             />
-            <Text style={[styles.inputHint, { color: nomorMesin.replace(/\s/g, "").length === 12 ? C.accentSuccess : C.textMuted }]}>
-              {nomorMesin.replace(/\s/g, "").length}/12 karakter
-            </Text>
+            {rawMesin.length > 0 && rawMesin.length < 12 && (
+              <Text style={[s.hint, { color: C.accentWarning }]}>
+                {rawMesin.length}/12{rawMesin.length === 5 ? " — lanjutkan dengan angka" : ""}
+              </Text>
+            )}
           </View>
 
-          {/* Rekam */}
-          <View style={[styles.card, { backgroundColor: C.surface, borderColor: C.border }]}>
-            <View style={styles.cardRow}>
-              <Ionicons name="mic" size={16} color={C.accentRecord} />
-              <Text style={[styles.cardTitle, { color: C.textPrimary }]}>Rekam Suara</Text>
+          <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
+            <View style={s.cardRow}>
+              <Ionicons name="mic" size={15} color={C.accentSuccess} />
+              <Text style={[s.cardTitle, { color: C.textPrimary }]}>Rekam Suara</Text>
             </View>
+
+            {isRecording && (
+              <View style={[s.waveBox, { backgroundColor: C.inputBg, borderColor: C.border }]}>
+                <Waveform isRecording={isRecording} C={C} />
+                <Text style={[s.recTimer, { color: C.accentSuccess }]}>{formatTime(recordingMs)}</Text>
+              </View>
+            )}
 
             {!recordingUri ? (
-              <View style={styles.recorderArea}>
-                <Text style={[styles.timerText, { color: C.textPrimary }]}>{formatTime(recordingMs)}</Text>
-                {isRecording && <Waveform isRecording={isRecording} C={C} />}
+              <View style={{ gap: 8 }}>
                 <TouchableOpacity
                   onPress={isRecording ? stopRecording : startRecording}
-                  style={[styles.recordBtn, isRecording
-                    ? { backgroundColor: C.accentRecord }
-                    : { backgroundColor: C.inputBg, borderWidth: 2, borderColor: C.border }
-                  ]}
-                  activeOpacity={0.85}
+                  style={[s.recBtn, { backgroundColor: isRecording ? C.accentRecord : C.accentSuccess }]}
                 >
-                  <Ionicons name={isRecording ? "stop" : "mic"} size={32} color={isRecording ? "#fff" : C.textPrimary} />
+                  <Ionicons name={isRecording ? "stop" : "mic"} size={18} color="#fff" />
+                  <Text style={[s.recBtnText, { color: "#fff" }]}>
+                    {isRecording ? `Stop  ${formatTime(recordingMs)}` : "Mulai Rekam"}
+                  </Text>
                 </TouchableOpacity>
-                <Text style={[styles.recordHint, { color: C.textSecondary }]}>
-                  {isRecording ? "Sedang merekam — ketuk untuk berhenti" : "Ketuk untuk mulai merekam"}
-                </Text>
-                {!isRecording && (
-                  <TouchableOpacity style={[styles.browseBtn, { borderColor: C.border, backgroundColor: C.bg }]} onPress={browseAudioFile}>
-                    <Ionicons name="folder-open-outline" size={13} color={C.textSecondary} />
-                    <Text style={[styles.browseBtnText, { color: C.textSecondary }]}>Pilih file audio dari storage</Text>
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity onPress={pickAudio} style={[s.btnOutline, { borderColor: C.border }]}>
+                  <Ionicons name="document-outline" size={15} color={C.textSecondary} />
+                  <Text style={[s.btnOutlineText, { color: C.textSecondary }]}>Pilih File Audio</Text>
+                </TouchableOpacity>
               </View>
             ) : (
-              <View style={{ gap: 8 }}>
-                {recordingName && (
-                  <View style={styles.cardRow}>
-                    <Ionicons name="musical-note" size={13} color={C.textSecondary} />
-                    <Text style={[styles.fileName, { color: C.textSecondary }]} numberOfLines={1}>{recordingName}</Text>
-                  </View>
-                )}
-                <PlaybackBar uri={recordingUri} durationMs={recordingMs} C={C} onDelete={deleteRecording} />
-              </View>
+              <PlaybackBar
+                uri={recordingUri}
+                durationMs={recordingMs > 0 ? recordingMs : 0}
+                C={C}
+                onDelete={() => { setRecordingUri(null); setRecordingName(null); setRecordingMs(0); }}
+              />
             )}
           </View>
 
-          {/* Poin Verifikasi - compact tanpa nomor */}
-          <View style={[styles.card, { backgroundColor: C.verifikasiBg, borderColor: C.accentRecord }]}>
-            <View style={styles.cardRow}>
-              <Ionicons name="shield-checkmark" size={15} color={C.accentRecord} />
-              <Text style={[styles.cardTitle, { color: C.accentRecord }]}>Wajib Diverifikasi</Text>
-            </View>
-            <View style={styles.chipGrid}>
-              {["Nama KTP","Alamat KTP","Tgl Lahir","Agama","Pekerjaan","Email & Medsos","Metode Bayar","Hobi","No. HP/WA"].map((item, i) => (
-                <View key={i} style={[styles.chip, { backgroundColor: C.bg, borderColor: C.accentRecord }]}>
-                  <Text style={[styles.chipText, { color: C.verifikasiText }]}>{item}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* Foto CDB */}
-          <View style={[styles.card, { backgroundColor: C.cdbBg, borderColor: C.accentDrive }]}>
-            <View style={styles.cardRow}>
+          <View style={[s.card, { backgroundColor: C.cdbBg, borderColor: C.border }]}>
+            <View style={s.cardRow}>
               <Ionicons name="camera" size={15} color={C.accentDrive} />
-              <Text style={[styles.cardTitle, { color: C.accentDrive }]}>Foto CDB</Text>
+              <Text style={[s.cardTitle, { color: C.textPrimary }]}>
+                Foto CDB <Text style={{ color: C.textMuted, fontWeight: "500" }}>(opsional)</Text>
+              </Text>
             </View>
-            {!cdbPhoto ? (
-              <View style={styles.btnRow}>
-                <TouchableOpacity style={[styles.btnPrimary, { backgroundColor: C.accentDrive, flex: 1 }]} onPress={handleScanCDB} disabled={uploading}>
-                  <Ionicons name="camera" size={14} color="#fff" />
-                  <Text style={[styles.btnPrimaryText, { color: "#fff" }]}>Kamera</Text>
+            {cdbPhoto ? (
+              <View style={{ gap: 8 }}>
+                <TouchableOpacity onPress={() => setCdbPreviewVisible(true)}>
+                  <Image source={{ uri: cdbPhoto }} style={s.cdbThumb} resizeMode="cover" />
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.btnOutline, { borderColor: C.accentDrive, flex: 1 }]} onPress={browseCdbPhoto} disabled={uploading}>
-                  <Ionicons name="folder-open-outline" size={14} color={C.accentDrive} />
-                  <Text style={[styles.btnOutlineText, { color: C.accentDrive }]}>Pilih File</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.cdbReadyRow}>
-                {/* Preview thumbnail */}
-                <TouchableOpacity onPress={() => setCdbPreviewVisible(true)} activeOpacity={0.85}>
-                  <Image source={{ uri: cdbPhoto }} style={[styles.cdbThumb, { borderColor: C.accentDrive }]} resizeMode="cover" />
-                  <View style={styles.cdbThumbOverlay}>
-                    <Ionicons name="expand-outline" size={14} color="#fff" />
-                  </View>
-                </TouchableOpacity>
-                <View style={{ flex: 1, gap: 4 }}>
-                  <View style={styles.cardRow}>
-                    <Ionicons name="checkmark-circle" size={15} color={C.accentSuccess} />
-                    <Text style={[styles.cdbReadyText, { color: C.accentSuccess }]}>Foto siap</Text>
-                  </View>
-                  {cdbPhotoName && <Text style={[styles.fileName, { color: C.textSecondary }]} numberOfLines={1}>{cdbPhotoName}</Text>}
-                  <TouchableOpacity onPress={deleteCdbPhoto} style={styles.cardRow}>
-                    <Ionicons name="trash-outline" size={13} color={C.accentRecord} />
-                    <Text style={[styles.deleteTxt, { color: C.accentRecord }]}>Hapus & foto ulang</Text>
+                <View style={s.cdbActions}>
+                  <TouchableOpacity
+                    onPress={pickCdbPhoto}
+                    style={[s.cdbActionBtn, { borderColor: C.border, backgroundColor: C.surface }]}
+                  >
+                    <Ionicons name="camera-outline" size={14} color={C.textSecondary} />
+                    <Text style={[s.cdbActionText, { color: C.textSecondary }]}>Foto Ulang</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => { setCdbPhoto(null); setCdbPhotoName(null); }}
+                    style={[s.cdbActionBtn, { borderColor: C.accentRecord + "55", backgroundColor: C.deleteBtn }]}
+                  >
+                    <Ionicons name="trash-outline" size={14} color={C.accentRecord} />
+                    <Text style={[s.cdbActionText, { color: C.accentRecord }]}>Hapus</Text>
                   </TouchableOpacity>
                 </View>
               </View>
+            ) : (
+              <TouchableOpacity onPress={pickCdbPhoto} style={[s.recBtn, { backgroundColor: C.accentDrive }]}>
+                <Ionicons name="camera" size={18} color="#fff" />
+                <Text style={[s.recBtnText, { color: "#fff" }]}>Ambil / Pilih Foto CDB</Text>
+              </TouchableOpacity>
             )}
           </View>
 
-          {/* Upload */}
-          {recordingUri && (
-            <TouchableOpacity
-              style={[styles.btnUpload, { backgroundColor: canUpload ? C.primary : C.textMuted }]}
-              onPress={uploadToDrive} disabled={!canUpload}
-            >
-              <Ionicons name="cloud-upload" size={17} color={C.primaryFg} />
-              <Text style={[styles.btnUploadText, { color: C.primaryFg }]}>Upload ke Google Drive{cdbPhoto ? " + Foto" : ""}</Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleUpload}
+            disabled={!canUpload}
+            style={[s.uploadBtn, { backgroundColor: canUpload ? C.accentSuccess : C.inputBg }]}
+          >
+            <Ionicons name="cloud-upload-outline" size={20} color={canUpload ? "#fff" : C.textMuted} />
+            <Text style={[s.uploadBtnText, { color: canUpload ? "#fff" : C.textMuted }]}>Upload ke Google Drive</Text>
+          </TouchableOpacity>
+
+          {!canUpload && (
+            <Text style={[s.uploadHint, { color: C.textMuted }]}>
+              {!driveConnected ? "• Hubungkan Google Drive dahulu" : ""}
+              {!namaKonsumen.trim() ? "\n• Isi nama konsumen" : ""}
+              {rawMesin.length !== 12 ? `\n• Nomor mesin harus 12 karakter (${rawMesin.length}/12)` : ""}
+              {!recordingUri ? "\n• Rekam atau pilih file audio" : ""}
+            </Text>
           )}
 
-          <View style={{ height: 24 }} />
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Preview foto fullscreen */}
+      {menuVisible && (
+        <TouchableOpacity style={s.menuBackdrop} activeOpacity={1} onPress={closeMenu}>
+          <Animated.View
+            style={[s.menuBox, { backgroundColor: C.menuBg, borderColor: C.border, opacity: menuAnim, transform: [{ scale: menuScale }] }]}
+          >
+            {[
+              { icon: "person-outline", label: "Profil / Akun", onPress: () => { closeMenu(); router.push("/profile"); } },
+              { icon: "folder-outline", label: "Folder Drive", onPress: () => { closeMenu(); router.push("/folder-drive"); } },
+              { icon: "time-outline", label: "Riwayat Upload", onPress: () => { closeMenu(); router.push("/history"); } },
+              { icon: "information-circle-outline", label: "Tentang", onPress: () => { closeMenu(); router.push("/tentang"); } },
+            ].map((item, i) => (
+              <TouchableOpacity key={i} onPress={item.onPress} style={[s.menuItem, { borderBottomColor: C.border }]}>
+                <Ionicons name={item.icon as any} size={16} color={C.textSecondary} />
+                <Text style={[s.menuItemText, { color: C.textPrimary }]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              onPress={() => { closeMenu(); logout(); }}
+              style={[s.menuItemLogout, { backgroundColor: isDark ? "#1a0a0a" : "#FFF1F2" }]}
+            >
+              <Ionicons name="log-out-outline" size={16} color={C.accentRecord} />
+              <Text style={[s.menuItemLogoutText, { color: C.accentRecord }]}>Keluar</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </TouchableOpacity>
+      )}
+
       <Modal visible={cdbPreviewVisible} transparent animationType="fade" onRequestClose={() => setCdbPreviewVisible(false)}>
-        <TouchableOpacity style={styles.previewBackdrop} activeOpacity={1} onPress={() => setCdbPreviewVisible(false)}>
-          {cdbPhoto && <Image source={{ uri: cdbPhoto }} style={styles.previewImg} resizeMode="contain" />}
-          <View style={[styles.previewClose, { backgroundColor: C.surface }]}>
-            <Ionicons name="close" size={20} color={C.textPrimary} />
-          </View>
+        <TouchableOpacity style={s.previewBackdrop} activeOpacity={1} onPress={() => setCdbPreviewVisible(false)}>
+          {cdbPhoto && <Image source={{ uri: cdbPhoto }} style={s.previewImg} resizeMode="contain" />}
         </TouchableOpacity>
       </Modal>
+
+      <LoadingOverlay visible={uploading} label={uploadLabel} progress={uploadProgress} C={C} />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   safe: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1 },
-  headerLeft: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
-  logoImg: { width: 34, height: 34, borderRadius: 8 },
-  headerTitle: { fontSize: 12, fontWeight: "800" },
-  headerSubtitle: { fontSize: 10, marginTop: 1 },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 6 },
-  themeToggle: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
-  themeText: { fontSize: 11, fontWeight: "600" },
-  pill: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
-  pillText: { fontSize: 11, fontWeight: "600" },
-  dots: { flexDirection: "row", gap: 3, alignItems: "center" },
-  dot: { width: 3.5, height: 3.5, borderRadius: 2 },
-  userStrip: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1 },
-  avatarSmall: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  avatarSmallText: { fontSize: 12, fontWeight: "800" },
-  userName: { fontSize: 12, fontWeight: "700" },
-  userEmail: { fontSize: 10 },
-  menuBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.25)", justifyContent: "flex-start", alignItems: "flex-end" },
-  menuBox: { marginTop: 76, marginRight: 10, borderRadius: 16, borderWidth: 1, minWidth: 220, overflow: "hidden", shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 },
-  menuItem: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 13, borderBottomWidth: 1 },
-  menuIconWrap: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  menuItemText: { flex: 1, fontSize: 13, fontWeight: "600" },
-  menuDivider: { height: 1 },
-  content: { padding: 12, gap: 10 },
+  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, gap: 10 },
+  headerTitle: { fontSize: 13, fontWeight: "800" },
+  headerSub: { fontSize: 10, marginTop: 1 },
+  themeRow: { flexDirection: "row", alignItems: "center", gap: 2 },
+  iconBtn: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1 },
+  content: { padding: 14, gap: 12, paddingBottom: 40 },
+  driveCard: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 12, borderWidth: 1 },
+  driveText: { fontSize: 12, fontWeight: "600" },
   card: { borderRadius: 16, borderWidth: 1, padding: 14, gap: 10 },
-  cardRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  cardRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   cardTitle: { fontSize: 13, fontWeight: "800" },
-  cardDesc: { fontSize: 12, lineHeight: 17 },
   label: { fontSize: 10, fontWeight: "700", letterSpacing: 1.2 },
-  input: { height: 46, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, fontWeight: "500" },
-  inputHint: { fontSize: 10, fontWeight: "600", textAlign: "right" },
-  btnRow: { flexDirection: "row", gap: 8 },
-  btnPrimary: { height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 5, paddingHorizontal: 14 },
-  btnPrimaryText: { fontWeight: "700", fontSize: 13 },
-  btnOutline: { height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 5, paddingHorizontal: 14, borderWidth: 1.5 },
-  btnOutlineText: { fontWeight: "700", fontSize: 13 },
-  btnIcon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1 },
-  connectedHint: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1 },
-  connectedText: { flex: 1, fontSize: 12, fontWeight: "600" },
-  recorderArea: { alignItems: "center", gap: 10, paddingVertical: 4 },
-  timerText: { fontSize: 40, fontWeight: "900", letterSpacing: -2, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" },
-  recordBtn: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center" },
-  recordHint: { fontSize: 12, textAlign: "center" },
-  browseBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10, borderWidth: 1 },
-  browseBtnText: { fontSize: 12 },
-  fileName: { fontSize: 11 },
-  chipGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1 },
-  chipText: { fontSize: 11, fontWeight: "600" },
-  cdbReadyRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  cdbThumb: { width: 64, height: 80, borderRadius: 10, borderWidth: 1.5 },
-  cdbThumbOverlay: { position: "absolute", bottom: 4, right: 4, backgroundColor: "rgba(0,0,0,0.45)", borderRadius: 6, padding: 3 },
-  cdbReadyText: { fontSize: 12, fontWeight: "800" },
-  deleteTxt: { fontSize: 12, fontWeight: "600" },
-  btnUpload: { height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
-  btnUploadText: { fontWeight: "700", fontSize: 14 },
-  previewBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.92)", alignItems: "center", justifyContent: "center" },
-  previewImg: { width: "90%", height: "80%" },
-  previewClose: { position: "absolute", top: 50, right: 20, width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  input: { height: 46, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 14, fontWeight: "500" },
+  hint: { fontSize: 11, fontWeight: "600", marginTop: -4 },
+  waveBox: { borderRadius: 12, borderWidth: 1, paddingVertical: 6, alignItems: "center", gap: 2 },
+  recTimer: { fontSize: 13, fontWeight: "800", fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", paddingBottom: 4 },
+  recBtn: { height: 48, borderRadius: 13, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  recBtnText: { fontWeight: "700", fontSize: 14 },
+  btnOutline: { height: 42, borderRadius: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, borderWidth: 1 },
+  btnOutlineText: { fontWeight: "600", fontSize: 13 },
+  cdbThumb: { width: "100%", height: 160, borderRadius: 12 },
+  cdbActions: { flexDirection: "row", gap: 8 },
+  cdbActionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, height: 38, borderRadius: 10, borderWidth: 1 },
+  cdbActionText: { fontSize: 12, fontWeight: "700" },
+  uploadBtn: { height: 52, borderRadius: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
+  uploadBtnText: { fontWeight: "800", fontSize: 15 },
+  uploadHint: { fontSize: 11, lineHeight: 18, textAlign: "center" },
+  menuBackdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  menuBox: { position: "absolute", top: 60, right: 14, width: 200, borderRadius: 16, borderWidth: 1, overflow: "hidden", shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 },
+  menuItem: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 13, borderBottomWidth: 1 },
+  menuItemText: { fontSize: 13, fontWeight: "600" },
+  menuItemLogout: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 13 },
+  menuItemLogoutText: { fontSize: 13, fontWeight: "700" },
+  previewBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.9)", alignItems: "center", justifyContent: "center" },
+  previewImg: { width: "100%", height: "80%" },
 });

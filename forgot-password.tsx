@@ -43,104 +43,104 @@ export default function ForgotPasswordScreen() {
 
   if (step === "success") {
     return (
-      <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]} edges={["top","left","right"]}>
-        <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-          <Image
-            source={{ uri: "https://customer-assets.emergentagent.com/job_audio-archiver/artifacts/o8vroxrg_LOGO%20APLIKASIKU.png" }}
-            style={s.logo} resizeMode="contain"
-          />
-          <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
-            <View style={[s.successIcon, { backgroundColor: C.connectedHintBg }]}>
-              <Ionicons name="checkmark-circle" size={48} color={C.accentSuccess} />
-            </View>
-            <Text style={[s.successTitle, { color: C.textPrimary }]}>Password Berhasil Direset!</Text>
-            <Text style={[s.successDesc, { color: C.textSecondary }]}>
-              Password sudah berhasil diubah. Kode recovery lama sudah hangus — generate kode baru di Profil setelah login.
-            </Text>
-            <View style={[s.infoBox, { backgroundColor: C.cdbBg, borderColor: C.accentDrive }]}>
-              <Ionicons name="information-circle-outline" size={13} color={C.accentDrive} />
-              <Text style={[s.infoText, { color: C.textSecondary }]}>
-                Setelah login, segera generate kode recovery baru dan screenshot.
-              </Text>
-            </View>
-            <TouchableOpacity testID="btn-back-login" style={[s.btnPrimary, { backgroundColor: C.primary }]} onPress={() => router.replace("/login")}>
-              <Ionicons name="log-in-outline" size={16} color={C.primaryFg} />
-              <Text style={[s.btnPrimaryText, { color: C.primaryFg }]}>Login Sekarang</Text>
-            </TouchableOpacity>
+      <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
+        <ScrollView contentContainerStyle={[s.content, { alignItems: "center", gap: 14, padding: 32 }]}>
+          <View style={[s.successIcon, { backgroundColor: C.badgeSuccessBg }]}>
+            <Ionicons name="checkmark-circle" size={40} color={C.accentSuccess} />
           </View>
+          <Text style={[s.successTitle, { color: C.textPrimary }]}>Password Berhasil Direset!</Text>
+          <Text style={[s.successDesc, { color: C.textSecondary }]}>
+            Password sudah berhasil diubah. Kode recovery lama sudah hangus — generate kode baru di Profil setelah login.
+          </Text>
+          <TouchableOpacity onPress={() => router.replace("/login")} style={[s.btnPrimary, { backgroundColor: C.primary, width: "100%" }]}>
+            <Text style={[s.btnPrimaryText, { color: C.primaryFg }]}>Login Sekarang</Text>
+          </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]} edges={["top","left","right"]}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <Image
-            source={{ uri: "https://customer-assets.emergentagent.com/job_audio-archiver/artifacts/o8vroxrg_LOGO%20APLIKASIKU.png" }}
-            style={s.logo} resizeMode="contain"
-          />
-          <Text style={[s.brand, { color: C.textPrimary }]}>Perekam Verifikasi Data Konsumen</Text>
-          <Text style={[s.brandSub, { color: C.textSecondary }]}>PT Capella Dinamik Nusantara</Text>
+    <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+          <Image source={require("../assets/images/icon.png")} style={s.logo} />
+          <Text style={[s.brand, { color: C.textPrimary }]}>Honda Visual On-site Capture</Text>
+          <Text style={[s.brandSub, { color: C.textMuted }]}>PT Capella Dinamik Nusantara</Text>
 
           <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
             <Text style={[s.title, { color: C.textPrimary }]}>Reset Password</Text>
             <Text style={[s.sub, { color: C.textSecondary }]}>Masukkan email, kode recovery, dan password baru.</Text>
 
-            <View style={[s.infoBox, { backgroundColor: C.cdbBg, borderColor: C.accentDrive }]}>
-              <Ionicons name="key-outline" size={14} color={C.accentDrive} />
-              <Text style={[s.infoText, { color: C.textSecondary }]}>
-                Kode recovery di-generate di menu Profil setelah login.
-              </Text>
-            </View>
+            <Text style={[s.label, { color: C.textMuted }]}>EMAIL TERDAFTAR</Text>
+            <TextInput
+              style={[s.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="emailanda@gmail.com"
+              placeholderTextColor={C.textMuted}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              editable={!busy}
+            />
 
-            <Text style={[s.label, { color: C.textSecondary }]}>EMAIL TERDAFTAR</Text>
-            <TextInput testID="input-email" style={[s.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
-              placeholder="emailanda@gmail.com" placeholderTextColor={C.textMuted}
-              autoCapitalize="none" keyboardType="email-address" autoComplete="email"
-              value={email} onChangeText={setEmail} editable={!busy} />
+            <Text style={[s.label, { color: C.textMuted }]}>KODE RECOVERY (6 KARAKTER)</Text>
+            <TextInput
+              style={[s.input, s.tokenInput, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
+              value={token}
+              onChangeText={(t) => setToken(t.toUpperCase())}
+              placeholder="XXXXXX"
+              placeholderTextColor={C.textMuted}
+              autoCapitalize="characters"
+              maxLength={6}
+              editable={!busy}
+            />
 
-            <Text style={[s.label, { color: C.textSecondary, marginTop: 12 }]}>KODE RECOVERY (6 KARAKTER)</Text>
-            <TextInput testID="input-token" style={[s.input, s.tokenInput, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
-              placeholder="CONTOH: A3BX7Z" placeholderTextColor={C.textMuted}
-              autoCapitalize="characters" autoCorrect={false} maxLength={6}
-              value={token} onChangeText={(t) => setToken(t.toUpperCase())} editable={!busy} />
-            <Text style={[s.hint, { color: C.textMuted }]}>Lihat dari screenshot kode saat generate.</Text>
-
-            <Text style={[s.label, { color: C.textSecondary, marginTop: 12 }]}>PASSWORD BARU</Text>
+            <Text style={[s.label, { color: C.textMuted }]}>PASSWORD BARU</Text>
             <View style={[s.pwdRow, { backgroundColor: C.inputBg, borderColor: C.border }]}>
-              <TextInput testID="input-new-password" style={[s.input, { flex: 1, borderWidth: 0, backgroundColor: "transparent", color: C.textPrimary }]}
-                placeholder="Minimal 6 karakter" placeholderTextColor={C.textMuted}
-                secureTextEntry={!showNewPwd} value={newPassword} onChangeText={setNewPassword} editable={!busy} />
-              <TouchableOpacity style={s.eyeBtn} onPress={() => setShowNewPwd(v => !v)}>
-                <Ionicons name={showNewPwd ? "eye-off-outline" : "eye-outline"} size={20} color={C.textMuted} />
+              <TextInput
+                style={[s.input, { flex: 1, borderWidth: 0, backgroundColor: "transparent", color: C.textPrimary }]}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                placeholder="••••••••"
+                placeholderTextColor={C.textMuted}
+                secureTextEntry={!showNewPwd}
+                editable={!busy}
+              />
+              <TouchableOpacity onPress={() => setShowNewPwd(v => !v)} style={s.eyeBtn}>
+                <Ionicons name={showNewPwd ? "eye-off-outline" : "eye-outline"} size={18} color={C.textMuted} />
               </TouchableOpacity>
             </View>
 
-            <Text style={[s.label, { color: C.textSecondary, marginTop: 12 }]}>KONFIRMASI PASSWORD BARU</Text>
+            <Text style={[s.label, { color: C.textMuted }]}>KONFIRMASI PASSWORD BARU</Text>
             <View style={[s.pwdRow, { backgroundColor: C.inputBg, borderColor: C.border }]}>
-              <TextInput testID="input-confirm-password" style={[s.input, { flex: 1, borderWidth: 0, backgroundColor: "transparent", color: C.textPrimary }]}
-                placeholder="Ulangi password baru" placeholderTextColor={C.textMuted}
-                secureTextEntry={!showConfirmPwd} value={confirmPassword} onChangeText={setConfirmPassword} editable={!busy} />
-              <TouchableOpacity style={s.eyeBtn} onPress={() => setShowConfirmPwd(v => !v)}>
-                <Ionicons name={showConfirmPwd ? "eye-off-outline" : "eye-outline"} size={20} color={C.textMuted} />
+              <TextInput
+                style={[s.input, { flex: 1, borderWidth: 0, backgroundColor: "transparent", color: C.textPrimary }]}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="••••••••"
+                placeholderTextColor={C.textMuted}
+                secureTextEntry={!showConfirmPwd}
+                editable={!busy}
+              />
+              <TouchableOpacity onPress={() => setShowConfirmPwd(v => !v)} style={s.eyeBtn}>
+                <Ionicons name={showConfirmPwd ? "eye-off-outline" : "eye-outline"} size={18} color={C.textMuted} />
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity testID="btn-submit" style={[s.btnPrimary, { backgroundColor: C.primary, opacity: busy ? 0.7 : 1 }]} onPress={onSubmit} disabled={busy}>
+            <TouchableOpacity onPress={onSubmit} disabled={busy} style={[s.btnPrimary, { backgroundColor: C.primary, marginTop: 6 }]}>
               {busy ? <ActivityIndicator color={C.primaryFg} /> : (
-                <><Ionicons name="lock-closed-outline" size={16} color={C.primaryFg} /><Text style={[s.btnPrimaryText, { color: C.primaryFg }]}>Reset Password</Text></>
+                <Text style={[s.btnPrimaryText, { color: C.primaryFg }]}>Reset Password</Text>
               )}
             </TouchableOpacity>
+          </View>
 
-            <View style={s.row}>
-              <Link href="/login" asChild>
-                <TouchableOpacity testID="link-login">
-                  <Text style={[s.link, { color: C.accentDrive }]}>Kembali ke Login</Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
+          <View style={s.row}>
+            <Link href="/login" asChild>
+              <TouchableOpacity style={{ paddingVertical: 12 }}>
+                <Text style={[s.link, { color: C.textMuted }]}>Kembali ke Login</Text>
+              </TouchableOpacity>
+            </Link>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -157,15 +157,12 @@ const s = StyleSheet.create({
   card: { width: "100%", borderRadius: 20, borderWidth: 1, padding: 20, gap: 10 },
   title: { fontSize: 20, fontWeight: "800" },
   sub: { fontSize: 12 },
-  infoBox: { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 10, borderRadius: 10, borderWidth: 1 },
-  infoText: { flex: 1, fontSize: 11, lineHeight: 16 },
   label: { fontSize: 10, fontWeight: "700", letterSpacing: 1.2, marginBottom: 5 },
   input: { height: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, fontWeight: "500" },
   tokenInput: { fontSize: 20, fontWeight: "800", letterSpacing: 6, textAlign: "center", fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" },
-  hint: { fontSize: 11, marginTop: 3 },
   pwdRow: { flexDirection: "row", alignItems: "center", height: 48, borderWidth: 1, borderRadius: 12, overflow: "hidden" },
   eyeBtn: { width: 46, height: 48, alignItems: "center", justifyContent: "center" },
-  btnPrimary: { height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, marginTop: 6 },
+  btnPrimary: { height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
   btnPrimaryText: { fontWeight: "700", fontSize: 14 },
   row: { justifyContent: "center", marginTop: 12 },
   link: { fontWeight: "700", fontSize: 13 },
