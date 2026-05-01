@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL!;
+const BACKEND_URL = "https://ragash1993-production.up.railway.app";
 const TOKEN_KEY = "smh_jwt_token";
 
 export type AuthUser = {
