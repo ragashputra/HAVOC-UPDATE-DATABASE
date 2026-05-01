@@ -37,7 +37,7 @@ export default function LoginScreen() {
             source={{ uri: "https://customer-assets.emergentagent.com/job_audio-archiver/artifacts/o8vroxrg_LOGO%20APLIKASIKU.png" }}
             style={s.logo} resizeMode="contain"
           />
-          <Text style={[s.brand, { color: C.textPrimary }]}>Perekam Verifikasi Konsumen</Text>
+          <Text style={[s.brand, { color: C.textPrimary }]}>Perekam Verifikasi Data Konsumen</Text>
           <Text style={[s.brandSub, { color: C.textSecondary }]}>PT Capella Dinamik Nusantara</Text>
 
           <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>

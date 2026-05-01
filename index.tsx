@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView,
   ActivityIndicator, Alert, Platform, KeyboardAvoidingView, Image,
-  Animated, Easing, Modal, PanResponder,
+  Animated, Easing, Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Audio } from "expo-av";
@@ -74,17 +74,54 @@ const ls = StyleSheet.create({
   pct: { fontSize: 16, fontWeight: "800" },
 });
 
-// Playback bar dengan scrub
+// Waveform visualization (iPhone-style)
+function Waveform({ isRecording, C }: { isRecording: boolean; C: any }) {
+  const bars = Array.from({ length: 30 }, () => useRef(new Animated.Value(0.2)).current);
+
+  useEffect(() => {
+    if (isRecording) {
+      const anims = bars.map((bar) => 
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(bar, { toValue: Math.random() * 0.8 + 0.2, duration: 150, useNativeDriver: true }),
+            Animated.timing(bar, { toValue: Math.random() * 0.5 + 0.1, duration: 150, useNativeDriver: true }),
+          ])
+        )
+      );
+      anims.forEach((a, i) => setTimeout(() => a.start(), i * 30));
+      return () => anims.forEach(a => a.stop());
+    } else {
+      bars.forEach(bar => Animated.timing(bar, { toValue: 0.2, duration: 200, useNativeDriver: true }).start());
+    }
+  }, [isRecording]);
+
+  return (
+    <View style={wf.container}>
+      {bars.map((bar, i) => (
+        <Animated.View key={i} style={[wf.bar, { backgroundColor: C.accentRecord, transform: [{ scaleY: bar }] }]} />
+      ))}
+    </View>
+  );
+}
+
+const wf = StyleSheet.create({
+  container: { flexDirection: "row", alignItems: "center", justifyContent: "center", height: 50, gap: 3 },
+  bar: { width: 3, height: 44, borderRadius: 2 },
+});
+
+// Playback bar dengan scrub yang fixed
 function PlaybackBar({ uri, durationMs, C, onDelete }: { uri: string; durationMs: number; C: any; onDelete: () => void }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [posMs, setPosMs] = useState(0);
   const [totalMs, setTotalMs] = useState(durationMs || 0);
   const soundRef = useRef<Audio.Sound | null>(null);
-  const barWidth = useRef(0);
-  const isDragging = useRef(false);
+  const updateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    return () => { soundRef.current?.unloadAsync().catch(() => {}); };
+    return () => {
+      if (updateTimerRef.current) clearInterval(updateTimerRef.current);
+      soundRef.current?.unloadAsync().catch(() => {});
+    };
   }, []);
 
   const loadSound = async () => {
@@ -95,8 +132,12 @@ function PlaybackBar({ uri, durationMs, C, onDelete }: { uri: string; durationMs
     if (status.isLoaded && status.durationMillis) setTotalMs(status.durationMillis);
     sound.setOnPlaybackStatusUpdate((s) => {
       if (s.isLoaded) {
-        if (!isDragging.current) setPosMs(s.positionMillis ?? 0);
-        if (s.didJustFinish) { setIsPlaying(false); setPosMs(0); sound.setPositionAsync(0); }
+        if (s.didJustFinish) {
+          setIsPlaying(false);
+          setPosMs(0);
+          sound.setPositionAsync(0);
+          if (updateTimerRef.current) { clearInterval(updateTimerRef.current); updateTimerRef.current = null; }
+        }
       }
     });
     return sound;
@@ -105,12 +146,25 @@ function PlaybackBar({ uri, durationMs, C, onDelete }: { uri: string; durationMs
   const togglePlay = async () => {
     try {
       const sound = await loadSound();
-      if (isPlaying) { await sound.pauseAsync(); setIsPlaying(false); }
-      else { await sound.playAsync(); setIsPlaying(true); }
+      if (isPlaying) {
+        await sound.pauseAsync();
+        setIsPlaying(false);
+        if (updateTimerRef.current) { clearInterval(updateTimerRef.current); updateTimerRef.current = null; }
+      } else {
+        await sound.playAsync();
+        setIsPlaying(true);
+        updateTimerRef.current = setInterval(async () => {
+          const status = await sound.getStatusAsync();
+          if (status.isLoaded) setPosMs(status.positionMillis ?? 0);
+        }, 200);
+      }
     } catch (e: any) { Alert.alert("Error", "Gagal memutar audio"); }
   };
 
-  const seekTo = async (ratio: number) => {
+  const onSeek = async (evt: any) => {
+    const x = evt.nativeEvent.locationX;
+    const width = evt.nativeEvent.target.measure ? 300 : 260; // fallback
+    const ratio = Math.max(0, Math.min(1, x / width));
     const ms = Math.floor(ratio * totalMs);
     setPosMs(ms);
     try {
@@ -118,24 +172,6 @@ function PlaybackBar({ uri, durationMs, C, onDelete }: { uri: string; durationMs
       await sound.setPositionAsync(ms);
     } catch {}
   };
-
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onPanResponderGrant: (e) => {
-      isDragging.current = true;
-      const ratio = Math.max(0, Math.min(1, e.nativeEvent.locationX / barWidth.current));
-      setPosMs(Math.floor(ratio * totalMs));
-    },
-    onPanResponderMove: (e) => {
-      const ratio = Math.max(0, Math.min(1, e.nativeEvent.locationX / barWidth.current));
-      setPosMs(Math.floor(ratio * totalMs));
-    },
-    onPanResponderRelease: (e) => {
-      isDragging.current = false;
-      const ratio = Math.max(0, Math.min(1, e.nativeEvent.locationX / barWidth.current));
-      seekTo(ratio);
-    },
-  });
 
   const progress = totalMs > 0 ? posMs / totalMs : 0;
 
@@ -145,14 +181,12 @@ function PlaybackBar({ uri, durationMs, C, onDelete }: { uri: string; durationMs
         <Ionicons name={isPlaying ? "pause" : "play"} size={20} color={C.primaryFg} />
       </TouchableOpacity>
       <View style={{ flex: 1, gap: 6 }}>
-        <View
-          style={[pb.bar, { backgroundColor: C.inputBg }]}
-          onLayout={e => { barWidth.current = e.nativeEvent.layout.width; }}
-          {...panResponder.panHandlers}
-        >
-          <View style={[pb.fill, { width: `${progress * 100}%` as any, backgroundColor: C.accentRecord }]} />
-          <View style={[pb.thumb, { left: `${progress * 100}%` as any, backgroundColor: C.accentRecord }]} />
-        </View>
+        <TouchableOpacity activeOpacity={1} onPress={onSeek}>
+          <View style={[pb.bar, { backgroundColor: C.inputBg }]}>
+            <View style={[pb.fill, { width: `${progress * 100}%` as any, backgroundColor: C.accentRecord }]} />
+            <View style={[pb.thumb, { left: `${progress * 100}%` as any, backgroundColor: C.accentRecord }]} />
+          </View>
+        </TouchableOpacity>
         <View style={pb.timeRow}>
           <Text style={[pb.timeText, { color: C.textSecondary }]}>{formatTime(posMs)}</Text>
           <Text style={[pb.timeText, { color: C.textMuted }]}>{formatTime(totalMs)}</Text>
@@ -322,7 +356,7 @@ export default function Index() {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) { Alert.alert("Izin Kamera", "Izinkan akses kamera."); return; }
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["images"] as ImagePicker.MediaType[], quality: 0.92, allowsEditing: true, aspect: [3, 4],
+        mediaTypes: ["images"] as ImagePicker.MediaType[], quality: 0.92, allowsEditing: false,
       });
       if (!result.canceled && result.assets[0]) { setCdbPhoto(result.assets[0].uri); setCdbPhotoName(null); }
     } catch (e: any) { Alert.alert("Error", "Gagal mengambil foto: " + (e?.message ?? e)); }
@@ -426,14 +460,15 @@ export default function Index() {
               style={styles.logoImg} resizeMode="contain"
             />
             <View style={{ flexShrink: 1 }}>
-              <Text style={[styles.headerTitle, { color: C.textPrimary }]} numberOfLines={1}>Perekam Verifikasi Konsumen</Text>
+              <Text style={[styles.headerTitle, { color: C.textPrimary }]} numberOfLines={1}>Perekam Verifikasi Data Konsumen</Text>
               <Text style={[styles.headerSubtitle, { color: C.textSecondary }]} numberOfLines={1}>PT Capella Dinamik Nusantara</Text>
             </View>
           </View>
           <View style={styles.headerRight}>
-            {/* Theme toggle */}
-            <TouchableOpacity onPress={toggleTheme} style={[styles.pill, { backgroundColor: C.surface, borderColor: C.border }]}>
-              <Ionicons name={isDark ? "sunny" : "moon-outline"} size={14} color={isDark ? "#FBBF24" : C.textSecondary} />
+            {/* Theme toggle - text + icon */}
+            <TouchableOpacity onPress={toggleTheme} style={[styles.themeToggle, { backgroundColor: C.surface, borderColor: C.border }]}>
+              <Ionicons name={isDark ? "sunny" : "moon-outline"} size={13} color={isDark ? "#FBBF24" : C.textSecondary} />
+              <Text style={[styles.themeText, { color: C.textSecondary }]}>{isDark ? "Light" : "Dark"}</Text>
             </TouchableOpacity>
             {/* Drive status */}
             {checkingStatus ? <ActivityIndicator size="small" color={C.textMuted} /> :
@@ -498,7 +533,7 @@ export default function Index() {
                   { text: "Keluar", style: "destructive", onPress: () => logout() },
                 ]), 150);
               }}>
-                <View style={[styles.menuIconWrap, { backgroundColor: "#FFF1F2" }]}>
+                <View style={[styles.menuIconWrap, { backgroundColor: isDark ? "#2D0D0D" : "#FFF1F2" }]}>
                   <Ionicons name="log-out-outline" size={16} color={C.accentRecord} />
                 </View>
                 <Text style={[styles.menuItemText, { color: C.accentRecord }]}>Keluar</Text>
@@ -560,6 +595,7 @@ export default function Index() {
                 const formatted = formatNomorMesin(t);
                 if (formatted.replace(/\s/g, "").length <= 12) setNomorMesin(formatted);
               }}
+              keyboardType={nomorMesin.replace(/\s/g, "").length >= 5 ? "numeric" : "default"}
               autoCapitalize="characters" editable={!isRecording && !uploading} maxLength={13}
             />
             <Text style={[styles.inputHint, { color: nomorMesin.replace(/\s/g, "").length === 12 ? C.accentSuccess : C.textMuted }]}>
@@ -577,6 +613,7 @@ export default function Index() {
             {!recordingUri ? (
               <View style={styles.recorderArea}>
                 <Text style={[styles.timerText, { color: C.textPrimary }]}>{formatTime(recordingMs)}</Text>
+                {isRecording && <Waveform isRecording={isRecording} C={C} />}
                 <TouchableOpacity
                   onPress={isRecording ? stopRecording : startRecording}
                   style={[styles.recordBtn, isRecording
@@ -702,6 +739,8 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 12, fontWeight: "800" },
   headerSubtitle: { fontSize: 10, marginTop: 1 },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 6 },
+  themeToggle: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
+  themeText: { fontSize: 11, fontWeight: "600" },
   pill: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
   pillText: { fontSize: 11, fontWeight: "600" },
   dots: { flexDirection: "row", gap: 3, alignItems: "center" },

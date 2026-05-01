@@ -11,9 +11,8 @@ import { useTheme } from "../lib/theme";
 
 export default function ProfileScreen() {
   const { user, updateProfile, refreshUser, generateRecoveryToken, getRecoveryStatus } = useAuth();
-  const { C, mode, toggleTheme } = useTheme();
+  const { C } = useTheme();
   const router = useRouter();
-  const isDark = mode === "dark";
 
   const [namaLengkap, setNamaLengkap] = useState(user?.nama_lengkap ?? "");
   const [unitUsaha, setUnitUsaha] = useState(user?.unit_usaha ?? "");
@@ -72,9 +71,7 @@ export default function ProfileScreen() {
           <Ionicons name="arrow-back" size={20} color={C.textPrimary} />
         </TouchableOpacity>
         <Text style={[s.headerTitle, { color: C.textPrimary }]}>Profil / Akun</Text>
-        <TouchableOpacity onPress={toggleTheme} style={[s.iconBtn, { borderColor: C.border }]}>
-          <Ionicons name={isDark ? "sunny" : "moon"} size={16} color={isDark ? "#FBBF24" : C.textSecondary} />
-        </TouchableOpacity>
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
