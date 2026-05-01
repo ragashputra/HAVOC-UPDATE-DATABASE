@@ -1,7 +1,6 @@
 // ============================================================
-// register.tsx — UPDATED
-// Perubahan: Logo aplikasi, placeholder nama konsumen = "Contoh: AHMAD RAGASH PUTRA",
-//            auto kapital nama konsumen
+// register.tsx — UPDATED v2.3.0
+// Nama aplikasi → Honda Visual On-site Capture
 // ============================================================
 import React, { useState } from "react";
 import {
@@ -26,8 +25,7 @@ export default function RegisterScreen() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
 
-  // Auto kapital nama konsumen
-  const handleNamaChange = (text: string) => {
+  const handleNamaChange = (text) => {
     setNamaLengkap(text.toUpperCase());
   };
 
@@ -39,7 +37,7 @@ export default function RegisterScreen() {
     setBusy(true);
     try {
       await register(email, password, namaLengkap);
-    } catch (e: any) {
+    } catch (e) {
       setErr(e?.message ?? "Registrasi gagal");
     } finally { setBusy(false); }
   };
@@ -49,20 +47,15 @@ export default function RegisterScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-          {/* LOGO APLIKASI */}
-          <Image
-            source={require("../assets/images/icon.png")}
-            style={[s.logo, { borderColor: C.border }]}
-            resizeMode="contain"
-          />
-          <Text style={[s.brand, { color: C.textPrimary }]}>Perekam Verifikasi Data Konsumen</Text>
+          {/* Image: replace require() with actual import in your Expo project */}
+          {/* <Image source={require("../assets/images/icon.png")} style={[s.logo, { borderColor: C.border }]} resizeMode="contain" /> */}
+          <Text style={[s.brand, { color: C.textPrimary }]}>Honda Visual On-site Capture</Text>
           <Text style={[s.brandSub, { color: C.textSecondary }]}>PT Capella Dinamik Nusantara</Text>
 
           <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
             <Text style={[s.title, { color: C.textPrimary }]}>Daftar</Text>
             <Text style={[s.sub, { color: C.textSecondary }]}>Buat akun baru untuk akses aplikasi</Text>
 
-            {/* Nama Lengkap — auto kapital, placeholder contoh */}
             <Text style={[s.label, { color: C.textMuted }]}>NAMA LENGKAP</Text>
             <TextInput
               style={[s.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
@@ -74,7 +67,6 @@ export default function RegisterScreen() {
               editable={!busy}
             />
 
-            {/* Email */}
             <Text style={[s.label, { color: C.textMuted }]}>EMAIL</Text>
             <TextInput
               style={[s.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
@@ -87,7 +79,6 @@ export default function RegisterScreen() {
               editable={!busy}
             />
 
-            {/* Password */}
             {[
               { label: "PASSWORD (MIN 6 KARAKTER)", show: showPwd, toggle: () => setShowPwd(v => !v), value: password, onChange: setPassword },
               { label: "KONFIRMASI PASSWORD", show: showConfirm, toggle: () => setShowConfirm(v => !v), value: confirm, onChange: setConfirm },

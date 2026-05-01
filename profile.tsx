@@ -37,7 +37,7 @@ export default function ProfileScreen() {
       await updateProfile(namaLengkap, unitUsaha.trim().toUpperCase());
       await refreshUser();
       Alert.alert("Berhasil", "Profil berhasil diperbarui");
-    } catch (e: any) { Alert.alert("Gagal", e?.message ?? "Tidak bisa update profil"); }
+    } catch (e) { Alert.alert("Gagal", e?.message ?? "Tidak bisa update profil"); }
     finally { setSavingProfile(false); }
   };
 
@@ -56,7 +56,7 @@ export default function ProfileScreen() {
       const result = await generateRecoveryToken();
       setShownToken(result.token);
       setRecoveryStatus({ has_token: true, generated_at: result.generated_at });
-    } catch (e: any) { Alert.alert("Gagal", e?.message ?? "Gagal generate kode"); }
+    } catch (e) { Alert.alert("Gagal", e?.message ?? "Gagal generate kode"); }
     finally { setGeneratingToken(false); }
   };
 
@@ -193,10 +193,10 @@ export default function ProfileScreen() {
             <TouchableOpacity
               key={i}
               style={[s.menuRow, i > 0 && { borderTopWidth: 1, borderTopColor: C.border }]}
-              onPress={() => router.push(item.route as any)}
+              onPress={() => router.push(item.route)}
               activeOpacity={0.7}
             >
-              <Ionicons name={item.icon as any} size={18} color={C.textSecondary} />
+              <Ionicons name={item.icon} size={18} color={C.textSecondary} />
               <Text style={[s.menuLabel, { color: C.textPrimary }]}>{item.label}</Text>
               <Ionicons name="chevron-forward" size={16} color={C.textMuted} />
             </TouchableOpacity>

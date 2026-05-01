@@ -1,6 +1,6 @@
 // ============================================================
-// tentang.tsx — UPDATED
-// Perubahan: Header compact konsisten dengan navbar baru
+// tentang.tsx — UPDATED v2.3.0
+// Nama aplikasi → Honda Visual On-site Capture
 // ============================================================
 import React from "react";
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from "react-native";
@@ -8,19 +8,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../lib/theme";
-// Note: in Expo, import appJson from "../app.json" works fine
-// For this preview file we hardcode the version
-const appJson = { expo: { version: "2.2.0" } };
+
+const APP_VERSION = "2.3.0";
 
 export default function TentangScreen() {
   const router = useRouter();
   const { C, mode, toggleTheme } = useTheme();
-  const version = appJson?.expo?.version ?? "2.2.0";
   const isDark = mode === "dark";
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
-      {/* Header compact */}
       <View style={[s.header, { borderBottomColor: C.border, backgroundColor: C.headerBg }]}>
         <TouchableOpacity onPress={() => router.back()} style={[s.backBtn, { borderColor: C.border }]}>
           <Ionicons name="chevron-back" size={18} color={C.textPrimary} />
@@ -37,22 +34,17 @@ export default function TentangScreen() {
 
       <ScrollView contentContainerStyle={[s.content, { backgroundColor: C.bg }]} showsVerticalScrollIndicator={false}>
 
-        {/* Logo */}
         <View style={[s.logoSection, { backgroundColor: C.surface, borderColor: C.border }]}>
-          <Image
-            source={require("../assets/images/icon.png")}
-            style={s.logo}
-            resizeMode="contain"
-          />
-          <Text style={[s.appName, { color: C.textPrimary }]}>Voice Record Customer Honda</Text>
+          {/* Image: replace require() with actual import in your Expo project */}
+          {/* <Image source={require("../assets/images/icon.png")} style={s.logo} resizeMode="contain" /> */}
+          <Text style={[s.appName, { color: C.textPrimary }]}>Honda Visual On-site Capture</Text>
           <Text style={[s.appCompany, { color: C.textSecondary }]}>PT Capella Dinamik Nusantara</Text>
           <View style={[s.versionBadge, { backgroundColor: C.stripBg }]}>
             <Ionicons name="git-branch" size={12} color={C.textMuted} />
-            <Text style={[s.versionText, { color: C.textMuted }]}>v{version}</Text>
+            <Text style={[s.versionText, { color: C.textMuted }]}>v{APP_VERSION}</Text>
           </View>
         </View>
 
-        {/* Developer */}
         <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
           <View style={s.cardHeader}>
             <Ionicons name="code-slash" size={15} color={C.textSecondary} />
@@ -70,14 +62,13 @@ export default function TentangScreen() {
           </View>
         </View>
 
-        {/* Info Aplikasi */}
         <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
           <View style={s.cardHeader}>
             <Ionicons name="information-circle" size={15} color={C.textSecondary} />
             <Text style={[s.cardTitle, { color: C.textPrimary }]}>Informasi Aplikasi</Text>
           </View>
           {[
-            { label: "Versi", value: version },
+            { label: "Versi", value: APP_VERSION },
             { label: "Platform", value: "Android / iOS" },
             { label: "Backend", value: "FastAPI + MongoDB" },
             { label: "Storage", value: "Google Drive API" },
@@ -90,7 +81,6 @@ export default function TentangScreen() {
           ))}
         </View>
 
-        {/* Copyright */}
         <Text style={[s.copyright, { color: C.textMuted }]}>
           © 2024–2026 PT Capella Dinamik Nusantara.{"\n"}Dikembangkan oleh Ahmad Ragash Putra.
         </Text>

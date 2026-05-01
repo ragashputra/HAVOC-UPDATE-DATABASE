@@ -35,7 +35,7 @@ export default function GantiPasswordScreen() {
       await changePassword(oldPwd, newPwd);
       setOldPwd(""); setNewPwd(""); setConfirmPwd("");
       Alert.alert("Berhasil!", "Password berhasil diubah.", [{ text: "OK", onPress: () => router.back() }]);
-    } catch (e: any) { Alert.alert("Gagal", e?.message ?? "Gagal ganti password"); }
+    } catch (e) { Alert.alert("Gagal", e?.message ?? "Gagal ganti password"); }
     finally { setSaving(false); }
   };
 

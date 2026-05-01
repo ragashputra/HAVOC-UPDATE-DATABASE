@@ -1,8 +1,6 @@
 // ============================================================
-// history.tsx — UPDATED
-// Perubahan: Search bar pencarian minimalis & compact,
-//            smooth scrolling + animasi fade,
-//            tampilan card lebih compact
+// history.tsx — UPDATED v2.3.0
+// Fix: tombol X ganda pada search (hapus clearButtonMode, pakai manual saja)
 // ============================================================
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
@@ -14,9 +12,6 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth, APP_BACKEND_URL, authFetch } from "../lib/auth";
 import { useTheme } from "../lib/theme";
-
-// UploadItem type (for reference only — not enforced in JS)
-// { id, nama_konsumen, nomor_mesin, file_name, file_type, drive_link, size_bytes, uploaded_at }
 
 function formatDate(iso) {
   try {
@@ -103,7 +98,6 @@ export default function HistoryScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const searchAnim = useRef(new Animated.Value(0)).current;
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -114,14 +108,13 @@ export default function HistoryScreen() {
         setItems(data.items || []);
         Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start();
       }
-    } catch { }
+    } catch {}
     finally { setLoading(false); setRefreshing(false); }
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
   const onRefresh = () => { setRefreshing(true); load(); };
 
-  // Filter berdasarkan search
   const filteredItems = items.filter(item => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
@@ -135,7 +128,7 @@ export default function HistoryScreen() {
   const audioItems = filteredItems.filter(i => !isPhoto(i));
   const photoItems = filteredItems.filter(i => isPhoto(i));
 
-  const onDelete = (item: UploadItem) => {
+  const onDelete = (item) => {
     Alert.alert("Hapus dari Riwayat?", `"${item.file_name}"\n\nFile di Drive TIDAK terhapus.`, [
       { text: "Batal", style: "cancel" },
       {
@@ -148,20 +141,11 @@ export default function HistoryScreen() {
               throw new Error(typeof d.detail === "string" ? d.detail : "Gagal menghapus");
             }
             setItems(prev => prev.filter(x => x.id !== item.id));
-          } catch (e: any) { Alert.alert("Gagal", e?.message ?? "Tidak bisa menghapus"); }
+          } catch (e) { Alert.alert("Gagal", e?.message ?? "Tidak bisa menghapus"); }
           finally { setDeletingId(null); }
         },
       },
     ]);
-  };
-
-  const onSearchFocus = () => {
-    setSearchFocused(true);
-    Animated.timing(searchAnim, { toValue: 1, duration: 200, useNativeDriver: false }).start();
-  };
-  const onSearchBlur = () => {
-    setSearchFocused(false);
-    Animated.timing(searchAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start();
   };
 
   return (
@@ -181,7 +165,7 @@ export default function HistoryScreen() {
         </View>
       </View>
 
-      {/* Search Bar */}
+      {/* Search Bar — clearButtonMode dihapus, pakai tombol X manual saja */}
       <View style={[s.searchContainer, { backgroundColor: C.bg, borderBottomColor: C.border }]}>
         <View style={[
           s.searchBar,
@@ -194,14 +178,14 @@ export default function HistoryScreen() {
             onChangeText={setSearchQuery}
             placeholder="Cari nama, nomor mesin..."
             placeholderTextColor={C.textMuted}
-            onFocus={onSearchFocus}
-            onBlur={onSearchBlur}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
             returnKeyType="search"
-            clearButtonMode="while-editing"
+            // TIDAK menggunakan clearButtonMode agar tidak double-X
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery("")} style={s.clearBtn}>
-              <Ionicons name="close-circle" size={16} color={C.textMuted} />
+              <Ionicons name="close-circle" size={17} color={C.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -262,9 +246,9 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 15, fontWeight: "800" },
   headerSub: { fontSize: 11, marginTop: 1 },
   searchContainer: { paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1 },
-  searchBar: { flexDirection: "row", alignItems: "center", borderRadius: 12, borderWidth: 1, height: 40, gap: 6 },
-  searchInput: { flex: 1, fontSize: 14, fontWeight: "500", paddingVertical: 0 },
-  clearBtn: { paddingRight: 10 },
+  searchBar: { flexDirection: "row", alignItems: "center", borderRadius: 12, borderWidth: 1, height: 40 },
+  searchInput: { flex: 1, fontSize: 14, fontWeight: "500", paddingVertical: 0, paddingHorizontal: 8 },
+  clearBtn: { paddingRight: 10, paddingLeft: 4 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
   emptyIcon: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center" },
   emptyTitle: { fontSize: 15, fontWeight: "800" },

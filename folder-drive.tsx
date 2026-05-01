@@ -33,7 +33,7 @@ export default function FolderDriveScreen() {
       await updateDriveFolder(folderId);
       setFolderInput(folderId);
       Alert.alert("Berhasil", "Folder Google Drive berhasil disimpan");
-    } catch (e: any) { Alert.alert("Gagal", e?.message ?? "Gagal simpan folder"); }
+    } catch (e) { Alert.alert("Gagal", e?.message ?? "Gagal simpan folder"); }
     finally { setSaving(false); }
   };
 

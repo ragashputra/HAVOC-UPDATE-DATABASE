@@ -1,6 +1,6 @@
 // ============================================================
-// login.tsx — UPDATED
-// Perubahan: Logo aplikasi ditambahkan, navbar minimal
+// login.tsx — UPDATED v2.3.0
+// Nama aplikasi → Honda Visual On-site Capture
 // ============================================================
 import React, { useState } from "react";
 import {
@@ -27,7 +27,7 @@ export default function LoginScreen() {
     setErr(null); setBusy(true);
     try {
       await login(email, password);
-    } catch (e: any) {
+    } catch (e) {
       setErr(e?.message ?? "Login gagal");
     } finally { setBusy(false); }
   };
@@ -37,13 +37,9 @@ export default function LoginScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-          {/* LOGO APLIKASI */}
-          <Image
-            source={require("../assets/images/icon.png")}
-            style={[s.logo, { borderColor: C.border }]}
-            resizeMode="contain"
-          />
-          <Text style={[s.brand, { color: C.textPrimary }]}>Perekam Verifikasi Data Konsumen</Text>
+          {/* Image: replace require() with actual import in your Expo project */}
+          {/* <Image source={require("../assets/images/icon.png")} style={[s.logo, { borderColor: C.border }]} resizeMode="contain" /> */}
+          <Text style={[s.brand, { color: C.textPrimary }]}>Honda Visual On-site Capture</Text>
           <Text style={[s.brandSub, { color: C.textSecondary }]}>PT Capella Dinamik Nusantara</Text>
 
           <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>

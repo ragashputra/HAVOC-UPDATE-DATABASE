@@ -1,6 +1,6 @@
 // ============================================================
-// forgot-password.tsx — UPDATED
-// Perubahan: Logo aplikasi ditambahkan
+// forgot-password.tsx — UPDATED v2.3.0
+// Nama aplikasi → Honda Visual On-site Capture
 // ============================================================
 import React, { useState } from "react";
 import {
@@ -41,7 +41,7 @@ export default function ForgotPasswordScreen() {
       const data = await res.json();
       if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Gagal reset password");
       setStep("success");
-    } catch (e: any) { Alert.alert("Gagal", e?.message ?? "Terjadi kesalahan"); }
+    } catch (e) { Alert.alert("Gagal", e?.message ?? "Terjadi kesalahan"); }
     finally { setBusy(false); }
   };
 
@@ -79,13 +79,9 @@ export default function ForgotPasswordScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-          {/* LOGO APLIKASI */}
-          <Image
-            source={require("../assets/images/icon.png")}
-            style={[s.logo, { borderColor: C.border }]}
-            resizeMode="contain"
-          />
-          <Text style={[s.brand, { color: C.textPrimary }]}>Perekam Verifikasi Data Konsumen</Text>
+          {/* Image: replace require() with actual import in your Expo project */}
+          {/* <Image source={require("../assets/images/icon.png")} style={[s.logo, { borderColor: C.border }]} resizeMode="contain" /> */}
+          <Text style={[s.brand, { color: C.textPrimary }]}>Honda Visual On-site Capture</Text>
           <Text style={[s.brandSub, { color: C.textSecondary }]}>PT Capella Dinamik Nusantara</Text>
 
           <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
