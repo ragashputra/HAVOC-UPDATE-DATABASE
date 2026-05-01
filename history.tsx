@@ -1,7 +1,13 @@
-import React, { useEffect, useState, useCallback } from "react";
+// ============================================================
+// history.tsx — UPDATED
+// Perubahan: Search bar pencarian minimalis & compact,
+//            smooth scrolling + animasi fade,
+//            tampilan card lebih compact
+// ============================================================
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Alert, Animated,
+  ActivityIndicator, RefreshControl, Alert, Animated, TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -9,48 +15,40 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth, APP_BACKEND_URL, authFetch } from "../lib/auth";
 import { useTheme } from "../lib/theme";
 
-type UploadItem = {
-  id: string;
-  nama_konsumen: string;
-  nomor_mesin: string;
-  file_name: string;
-  file_type?: string;
-  drive_link: string | null;
-  size_bytes: number;
-  uploaded_at: string;
-};
+// UploadItem type (for reference only — not enforced in JS)
+// { id, nama_konsumen, nomor_mesin, file_name, file_type, drive_link, size_bytes, uploaded_at }
 
-function formatDate(iso: string): string {
+function formatDate(iso) {
   try {
     const d = new Date(iso);
     return d.toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
   } catch { return iso; }
 }
 
-function formatSize(bytes: number): string {
+function formatSize(bytes) {
   if (!bytes) return "—";
   const kb = bytes / 1024;
   if (kb < 1024) return `${kb.toFixed(0)} KB`;
   return `${(kb / 1024).toFixed(1)} MB`;
 }
 
-function isPhoto(item: UploadItem): boolean {
+function isPhoto(item) {
   if (item.file_type === "cdb_photo") return true;
   const ext = item.file_name?.split(".").pop()?.toLowerCase() ?? "";
-  return ["jpg","jpeg","png","webp","heic"].includes(ext);
+  return ["jpg", "jpeg", "png", "webp", "heic"].includes(ext);
 }
 
-function ItemCard({ item, C, onDelete, deletingId }: { item: UploadItem; C: any; onDelete: (item: UploadItem) => void; deletingId: string | null }) {
+function ItemCard({ item, C, onDelete, deletingId }) {
   const photo = isPhoto(item);
   return (
     <View style={[ic.card, { backgroundColor: C.surface, borderColor: C.border }]}>
-      <View style={[ic.typeIcon, { backgroundColor: photo ? C.cdbBg : C.inputBg }]}>
-        <Ionicons name={photo ? "image-outline" : "mic-outline"} size={18} color={photo ? C.accentDrive : C.accentRecord} />
+      <View style={[ic.typeIcon, { backgroundColor: photo ? C.cdbBg : C.verifikasiBg }]}>
+        <Ionicons name={photo ? "image" : "mic"} size={18} color={photo ? C.accentDrive : C.accentRecord} />
       </View>
       <View style={{ flex: 1, gap: 3 }}>
-        <Text style={[ic.name, { color: C.textPrimary }]} numberOfLines={1}>{item.nama_konsumen}</Text>
+        <Text style={[ic.name, { color: C.textPrimary }]}>{item.nama_konsumen}</Text>
         <View style={ic.metaRow}>
-          <View style={[ic.mesinChip, { backgroundColor: C.inputBg }]}>
+          <View style={[ic.mesinChip, { backgroundColor: C.stripBg }]}>
             <Text style={[ic.mesinText, { color: C.textSecondary }]}>{item.nomor_mesin}</Text>
           </View>
           <Text style={[ic.dot, { color: C.textMuted }]}>·</Text>
@@ -66,11 +64,14 @@ function ItemCard({ item, C, onDelete, deletingId }: { item: UploadItem; C: any;
           </View>
         </View>
       </View>
-      <TouchableOpacity onPress={() => onDelete(item)} disabled={deletingId === item.id}
-        style={[ic.trash, { borderColor: C.border, backgroundColor: C.deleteBtn }]}>
+      <TouchableOpacity
+        onPress={() => onDelete(item)}
+        disabled={deletingId === item.id}
+        style={[ic.trash, { borderColor: C.border, backgroundColor: C.deleteBtn }]}
+      >
         {deletingId === item.id
           ? <ActivityIndicator size="small" color={C.accentRecord} />
-          : <Ionicons name="trash-outline" size={15} color={C.accentRecord} />}
+          : <Ionicons name="trash-outline" size={16} color={C.accentRecord} />}
       </TouchableOpacity>
     </View>
   );
@@ -95,11 +96,14 @@ export default function HistoryScreen() {
   const { token } = useAuth();
   const { C } = useTheme();
   const router = useRouter();
-  const [items, setItems] = useState<UploadItem[]>([]);
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const fadeAnim = useState(new Animated.Value(0))[0];
+  const [deletingId, setDeletingId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const searchAnim = useRef(new Animated.Value(0)).current;
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -108,19 +112,34 @@ export default function HistoryScreen() {
       const data = await res.json();
       if (res.ok) {
         setItems(data.items || []);
-        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+        Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start();
       }
-    } catch {}
+    } catch { }
     finally { setLoading(false); setRefreshing(false); }
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
   const onRefresh = () => { setRefreshing(true); load(); };
 
+  // Filter berdasarkan search
+  const filteredItems = items.filter(item => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      item.nama_konsumen?.toLowerCase().includes(q) ||
+      item.nomor_mesin?.toLowerCase().includes(q) ||
+      item.file_name?.toLowerCase().includes(q)
+    );
+  });
+
+  const audioItems = filteredItems.filter(i => !isPhoto(i));
+  const photoItems = filteredItems.filter(i => isPhoto(i));
+
   const onDelete = (item: UploadItem) => {
     Alert.alert("Hapus dari Riwayat?", `"${item.file_name}"\n\nFile di Drive TIDAK terhapus.`, [
       { text: "Batal", style: "cancel" },
-      { text: "Hapus", style: "destructive", onPress: async () => {
+      {
+        text: "Hapus", style: "destructive", onPress: async () => {
           setDeletingId(item.id);
           try {
             const res = await authFetch(token, `${APP_BACKEND_URL}/api/uploads/${item.id}`, { method: "DELETE" });
@@ -136,47 +155,98 @@ export default function HistoryScreen() {
     ]);
   };
 
-  // Group by konsumen
-  const audioItems = items.filter(i => !isPhoto(i));
-  const photoItems = items.filter(i => isPhoto(i));
+  const onSearchFocus = () => {
+    setSearchFocused(true);
+    Animated.timing(searchAnim, { toValue: 1, duration: 200, useNativeDriver: false }).start();
+  };
+  const onSearchBlur = () => {
+    setSearchFocused(false);
+    Animated.timing(searchAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start();
+  };
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]} edges={["top","left","right"]}>
-      <View style={[s.header, { backgroundColor: C.headerBg, borderBottomColor: C.border }]}>
+    <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
+      {/* Header */}
+      <View style={[s.header, { borderBottomColor: C.border, backgroundColor: C.headerBg }]}>
         <TouchableOpacity onPress={() => router.back()} style={[s.iconBtn, { borderColor: C.border }]}>
-          <Ionicons name="arrow-back" size={20} color={C.textPrimary} />
+          <Ionicons name="chevron-back" size={18} color={C.textPrimary} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={[s.headerTitle, { color: C.textPrimary }]}>Riwayat Upload</Text>
-          {items.length > 0 && <Text style={[s.headerSub, { color: C.textSecondary }]}>{audioItems.length} audio · {photoItems.length} foto</Text>}
+          {items.length > 0 && (
+            <Text style={[s.headerSub, { color: C.textMuted }]}>
+              {audioItems.length} audio · {photoItems.length} foto
+            </Text>
+          )}
         </View>
-        <View style={{ width: 36 }} />
+      </View>
+
+      {/* Search Bar */}
+      <View style={[s.searchContainer, { backgroundColor: C.bg, borderBottomColor: C.border }]}>
+        <View style={[
+          s.searchBar,
+          { backgroundColor: C.surface, borderColor: searchFocused ? C.primary : C.border }
+        ]}>
+          <Ionicons name="search" size={16} color={C.textMuted} style={{ marginLeft: 10 }} />
+          <TextInput
+            style={[s.searchInput, { color: C.textPrimary }]}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Cari nama, nomor mesin..."
+            placeholderTextColor={C.textMuted}
+            onFocus={onSearchFocus}
+            onBlur={onSearchBlur}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery("")} style={s.clearBtn}>
+              <Ionicons name="close-circle" size={16} color={C.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {loading ? (
         <View style={s.center}>
-          <ActivityIndicator size="large" color={C.textPrimary} />
+          <ActivityIndicator size="large" color={C.primary} />
         </View>
-      ) : items.length === 0 ? (
+      ) : filteredItems.length === 0 ? (
         <View style={s.center}>
           <View style={[s.emptyIcon, { backgroundColor: C.surface }]}>
-            <Ionicons name="cloud-offline-outline" size={40} color={C.textMuted} />
+            <Ionicons name={searchQuery ? "search" : "mic-off"} size={32} color={C.textMuted} />
           </View>
-          <Text style={[s.emptyTitle, { color: C.textPrimary }]}>Belum ada rekaman</Text>
-          <Text style={[s.emptyDesc, { color: C.textSecondary }]}>File yang diupload akan tampil di sini</Text>
+          <Text style={[s.emptyTitle, { color: C.textPrimary }]}>
+            {searchQuery ? "Tidak ditemukan" : "Belum ada rekaman"}
+          </Text>
+          <Text style={[s.emptyDesc, { color: C.textMuted }]}>
+            {searchQuery ? `Tidak ada hasil untuk "${searchQuery}"` : "File yang diupload akan tampil di sini"}
+          </Text>
         </View>
       ) : (
         <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
           <FlatList
-            data={items}
+            data={filteredItems}
             keyExtractor={it => it.id}
             contentContainerStyle={[s.list, { backgroundColor: C.bg }]}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.textSecondary} />}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={C.primary}
+                colors={[C.primary]}
+              />
+            }
             showsVerticalScrollIndicator={false}
-            decelerationRate="fast"
+            decelerationRate="normal"
             ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
             renderItem={({ item }) => (
-              <ItemCard item={item} C={C} onDelete={onDelete} deletingId={deletingId} />
+              <ItemCard
+                item={item}
+                C={C}
+                onDelete={onDelete}
+                deletingId={deletingId}
+              />
             )}
           />
         </Animated.View>
@@ -191,8 +261,12 @@ const s = StyleSheet.create({
   iconBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1 },
   headerTitle: { fontSize: 15, fontWeight: "800" },
   headerSub: { fontSize: 11, marginTop: 1 },
+  searchContainer: { paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1 },
+  searchBar: { flexDirection: "row", alignItems: "center", borderRadius: 12, borderWidth: 1, height: 40, gap: 6 },
+  searchInput: { flex: 1, fontSize: 14, fontWeight: "500", paddingVertical: 0 },
+  clearBtn: { paddingRight: 10 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
-  emptyIcon: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center" },
+  emptyIcon: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center" },
   emptyTitle: { fontSize: 15, fontWeight: "800" },
   emptyDesc: { fontSize: 12 },
   list: { padding: 12, paddingBottom: 40 },

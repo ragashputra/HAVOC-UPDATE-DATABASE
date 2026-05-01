@@ -1,7 +1,12 @@
+// ============================================================
+// register.tsx — UPDATED
+// Perubahan: Logo aplikasi, placeholder nama konsumen = "Contoh: AHMAD RAGASH PUTRA",
+//            auto kapital nama konsumen
+// ============================================================
 import React, { useState } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Image,
-  KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Switch,
+  KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Link } from "expo-router";
@@ -11,8 +16,7 @@ import { useTheme } from "../lib/theme";
 
 export default function RegisterScreen() {
   const { register } = useAuth();
-  const { C, mode, toggleTheme } = useTheme();
-  const isDark = mode === "dark";
+  const { C } = useTheme();
   const [namaLengkap, setNamaLengkap] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,7 +24,12 @@ export default function RegisterScreen() {
   const [showPwd, setShowPwd] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState(null);
+
+  // Auto kapital nama konsumen
+  const handleNamaChange = (text: string) => {
+    setNamaLengkap(text.toUpperCase());
+  };
 
   const onSubmit = async () => {
     setErr(null);
@@ -38,40 +47,34 @@ export default function RegisterScreen() {
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-          <View style={s.topBar}>
-            <View style={s.themeRow}>
-              <Ionicons name={isDark ? "moon" : "sunny"} size={14} color={isDark ? "#fff" : C.textMuted} />
-              <Switch
-                value={isDark}
-                onValueChange={toggleTheme}
-                trackColor={{ false: "#E4E4E7", true: "#34C759" }}
-                thumbColor="#fff"
-                ios_backgroundColor="#E4E4E7"
-                style={{ transform: [{ scaleX: 0.78 }, { scaleY: 0.78 }] }}
-              />
-            </View>
-          </View>
+        <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-          <Image source={require("../assets/images/icon.png")} style={s.logo} />
-          <Text style={[s.brand, { color: isDark ? "#FFFFFF" : C.textPrimary }]}>Honda Visual On-site Capture</Text>
-          <Text style={[s.brandSub, { color: isDark ? "rgba(255,255,255,0.6)" : C.textMuted }]}>PT Capella Dinamik Nusantara</Text>
+          {/* LOGO APLIKASI */}
+          <Image
+            source={require("../assets/images/icon.png")}
+            style={[s.logo, { borderColor: C.border }]}
+            resizeMode="contain"
+          />
+          <Text style={[s.brand, { color: C.textPrimary }]}>Perekam Verifikasi Data Konsumen</Text>
+          <Text style={[s.brandSub, { color: C.textSecondary }]}>PT Capella Dinamik Nusantara</Text>
 
           <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
             <Text style={[s.title, { color: C.textPrimary }]}>Daftar</Text>
             <Text style={[s.sub, { color: C.textSecondary }]}>Buat akun baru untuk akses aplikasi</Text>
 
+            {/* Nama Lengkap — auto kapital, placeholder contoh */}
             <Text style={[s.label, { color: C.textMuted }]}>NAMA LENGKAP</Text>
             <TextInput
               style={[s.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
               value={namaLengkap}
-              onChangeText={setNamaLengkap}
-              placeholder="Ahmad Ragash Putra"
+              onChangeText={handleNamaChange}
+              placeholder="Contoh: AHMAD RAGASH PUTRA"
               placeholderTextColor={C.textMuted}
-              autoCapitalize="words"
+              autoCapitalize="characters"
               editable={!busy}
             />
 
+            {/* Email */}
             <Text style={[s.label, { color: C.textMuted }]}>EMAIL</Text>
             <TextInput
               style={[s.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
@@ -84,58 +87,54 @@ export default function RegisterScreen() {
               editable={!busy}
             />
 
-            <Text style={[s.label, { color: C.textMuted }]}>PASSWORD (MIN 6 KARAKTER)</Text>
-            <View style={[s.pwdRow, { backgroundColor: C.inputBg, borderColor: C.border }]}>
-              <TextInput
-                style={[s.input, { flex: 1, borderWidth: 0, backgroundColor: "transparent", color: C.textPrimary }]}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                placeholderTextColor={C.textMuted}
-                secureTextEntry={!showPwd}
-                editable={!busy}
-              />
-              <TouchableOpacity onPress={() => setShowPwd(v => !v)} style={s.eyeBtn}>
-                <Ionicons name={showPwd ? "eye-off-outline" : "eye-outline"} size={18} color={C.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={[s.label, { color: C.textMuted }]}>KONFIRMASI PASSWORD</Text>
-            <View style={[s.pwdRow, { backgroundColor: C.inputBg, borderColor: C.border }]}>
-              <TextInput
-                style={[s.input, { flex: 1, borderWidth: 0, backgroundColor: "transparent", color: C.textPrimary }]}
-                value={confirm}
-                onChangeText={setConfirm}
-                placeholder="••••••••"
-                placeholderTextColor={C.textMuted}
-                secureTextEntry={!showConfirm}
-                editable={!busy}
-              />
-              <TouchableOpacity onPress={() => setShowConfirm(v => !v)} style={s.eyeBtn}>
-                <Ionicons name={showConfirm ? "eye-off-outline" : "eye-outline"} size={18} color={C.textMuted} />
-              </TouchableOpacity>
-            </View>
+            {/* Password */}
+            {[
+              { label: "PASSWORD (MIN 6 KARAKTER)", show: showPwd, toggle: () => setShowPwd(v => !v), value: password, onChange: setPassword },
+              { label: "KONFIRMASI PASSWORD", show: showConfirm, toggle: () => setShowConfirm(v => !v), value: confirm, onChange: setConfirm },
+            ].map((f, i) => (
+              <View key={i}>
+                <Text style={[s.label, { color: C.textMuted }]}>{f.label}</Text>
+                <View style={[s.pwdRow, { backgroundColor: C.inputBg, borderColor: C.border }]}>
+                  <TextInput
+                    style={[s.pwdInput, { color: C.textPrimary }]}
+                    value={f.value}
+                    onChangeText={f.onChange}
+                    placeholder="••••••••"
+                    placeholderTextColor={C.textMuted}
+                    secureTextEntry={!f.show}
+                    editable={!busy}
+                  />
+                  <TouchableOpacity style={s.eyeBtn} onPress={f.toggle}>
+                    <Ionicons name={f.show ? "eye-off" : "eye"} size={20} color={C.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
 
             {err && (
-              <View style={[s.errBox, { backgroundColor: C.verifikasiBg }]}>
-                <Ionicons name="alert-circle-outline" size={15} color={C.verifikasiText} />
-                <Text style={[s.errText, { color: C.verifikasiText }]}>{err}</Text>
+              <View style={[s.errBox, { backgroundColor: "#FFF1F2", borderColor: "#FECDD3" }]}>
+                <Ionicons name="alert-circle" size={16} color="#E11D48" />
+                <Text style={[s.errText, { color: "#E11D48" }]}>{err}</Text>
               </View>
             )}
 
-            <TouchableOpacity onPress={onSubmit} disabled={busy} style={[s.btnPrimary, { backgroundColor: C.primary }]}>
+            <TouchableOpacity
+              style={[s.btnPrimary, { backgroundColor: C.primary, opacity: busy ? 0.7 : 1 }]}
+              onPress={onSubmit}
+              disabled={busy}
+              activeOpacity={0.8}
+            >
               {busy ? <ActivityIndicator color={C.primaryFg} /> : <Text style={[s.btnPrimaryText, { color: C.primaryFg }]}>Buat Akun</Text>}
             </TouchableOpacity>
           </View>
 
           <View style={s.row}>
-            <Text style={[s.muted, { color: isDark ? "rgba(255,255,255,0.55)" : C.textMuted }]}>Sudah punya akun? </Text>
-            <Link href="/login" asChild>
-              <TouchableOpacity>
-                <Text style={[s.link, { color: isDark ? "#FFFFFF" : C.primary }]}>Masuk</Text>
-              </TouchableOpacity>
+            <Text style={[s.muted, { color: C.textSecondary }]}>Sudah punya akun? </Text>
+            <Link href="/login">
+              <Text style={[s.link, { color: C.primary }]}>Masuk</Text>
             </Link>
           </View>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -144,24 +143,23 @@ export default function RegisterScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1 },
-  content: { padding: 24, alignItems: "center", paddingBottom: 40, gap: 0 },
-  topBar: { width: "100%", flexDirection: "row", justifyContent: "flex-end", marginBottom: 4, marginTop: -8 },
-  themeRow: { flexDirection: "row", alignItems: "center", gap: 2 },
-  logo: { width: 72, height: 72, marginTop: 8, borderRadius: 18 },
-  brand: { fontSize: 14, fontWeight: "800", marginTop: 10, textAlign: "center" },
-  brandSub: { fontSize: 11, marginBottom: 20, textAlign: "center" },
-  card: { width: "100%", borderRadius: 20, borderWidth: 1, padding: 20, gap: 10 },
+  content: { padding: 24, alignItems: "center", paddingBottom: 40 },
+  logo: { width: 80, height: 80, marginTop: 16, borderRadius: 20, borderWidth: 1 },
+  brand: { fontSize: 14, fontWeight: "800", marginTop: 12, textAlign: "center" },
+  brandSub: { fontSize: 11, marginBottom: 24, textAlign: "center" },
+  card: { width: "100%", borderRadius: 20, borderWidth: 1, padding: 20, gap: 4 },
   title: { fontSize: 22, fontWeight: "800" },
-  sub: { fontSize: 12, marginBottom: 4 },
-  label: { fontSize: 10, fontWeight: "700", letterSpacing: 1.2, marginBottom: 5 },
+  sub: { fontSize: 12, marginBottom: 8 },
+  label: { fontSize: 10, fontWeight: "700", letterSpacing: 1.2, marginBottom: 5, marginTop: 10 },
   input: { height: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, fontWeight: "500" },
   pwdRow: { flexDirection: "row", alignItems: "center", height: 48, borderWidth: 1, borderRadius: 12, overflow: "hidden" },
+  pwdInput: { flex: 1, height: 48, paddingHorizontal: 14, fontSize: 15, fontWeight: "500" },
   eyeBtn: { width: 46, height: 48, alignItems: "center", justifyContent: "center" },
-  errBox: { flexDirection: "row", alignItems: "center", gap: 6, padding: 10, borderRadius: 10 },
+  errBox: { flexDirection: "row", alignItems: "center", gap: 6, padding: 10, borderRadius: 10, borderWidth: 1, marginTop: 8 },
   errText: { fontSize: 12, fontWeight: "600", flex: 1 },
-  btnPrimary: { marginTop: 6, height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  btnPrimary: { marginTop: 14, height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   btnPrimaryText: { fontWeight: "700", fontSize: 15 },
-  row: { flexDirection: "row", justifyContent: "center", marginTop: 10, flexWrap: "wrap" },
+  row: { flexDirection: "row", justifyContent: "center", marginTop: 20, flexWrap: "wrap" },
   muted: { fontSize: 13 },
   link: { fontWeight: "700", fontSize: 13 },
 });

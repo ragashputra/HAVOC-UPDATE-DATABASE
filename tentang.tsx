@@ -1,58 +1,68 @@
+// ============================================================
+// tentang.tsx — UPDATED
+// Perubahan: Header compact konsisten dengan navbar baru
+// ============================================================
 import React from "react";
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Switch } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../lib/theme";
-import appJson from "../app.json";
+// Note: in Expo, import appJson from "../app.json" works fine
+// For this preview file we hardcode the version
+const appJson = { expo: { version: "2.2.0" } };
 
 export default function TentangScreen() {
   const router = useRouter();
   const { C, mode, toggleTheme } = useTheme();
-  const version = appJson?.expo?.version ?? "2.1.0";
+  const version = appJson?.expo?.version ?? "2.2.0";
   const isDark = mode === "dark";
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
-      <View style={[s.header, { borderBottomColor: C.border }]}>
+      {/* Header compact */}
+      <View style={[s.header, { borderBottomColor: C.border, backgroundColor: C.headerBg }]}>
         <TouchableOpacity onPress={() => router.back()} style={[s.backBtn, { borderColor: C.border }]}>
           <Ionicons name="chevron-back" size={18} color={C.textPrimary} />
         </TouchableOpacity>
         <Text style={[s.headerTitle, { color: C.textPrimary }]}>Tentang Aplikasi</Text>
-        <View style={s.themeRow}>
-          <Ionicons name={isDark ? "moon" : "sunny"} size={14} color={C.textMuted} />
-          <Switch
-            value={isDark}
-            onValueChange={toggleTheme}
-            trackColor={{ false: "#E4E4E7", true: "#34C759" }}
-            thumbColor="#fff"
-            ios_backgroundColor="#E4E4E7"
-            style={{ transform: [{ scaleX: 0.78 }, { scaleY: 0.78 }] }}
-          />
-        </View>
+        <TouchableOpacity
+          style={[s.themeBtn, { borderColor: C.border }]}
+          onPress={toggleTheme}
+          activeOpacity={0.7}
+        >
+          <Ionicons name={isDark ? "sunny" : "moon"} size={16} color={C.textSecondary} />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[s.content, { backgroundColor: C.bg }]} showsVerticalScrollIndicator={false}>
+
+        {/* Logo */}
         <View style={[s.logoSection, { backgroundColor: C.surface, borderColor: C.border }]}>
-          <Image source={require("../assets/images/icon.png")} style={s.logo} />
-          <Text style={[s.appName, { color: C.textPrimary }]}>Honda Visual On-site Capture</Text>
+          <Image
+            source={require("../assets/images/icon.png")}
+            style={s.logo}
+            resizeMode="contain"
+          />
+          <Text style={[s.appName, { color: C.textPrimary }]}>Voice Record Customer Honda</Text>
           <Text style={[s.appCompany, { color: C.textSecondary }]}>PT Capella Dinamik Nusantara</Text>
-          <View style={[s.versionBadge, { backgroundColor: C.inputBg }]}>
-            <Ionicons name="git-branch-outline" size={12} color={C.textMuted} />
+          <View style={[s.versionBadge, { backgroundColor: C.stripBg }]}>
+            <Ionicons name="git-branch" size={12} color={C.textMuted} />
             <Text style={[s.versionText, { color: C.textMuted }]}>v{version}</Text>
           </View>
         </View>
 
+        {/* Developer */}
         <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
           <View style={s.cardHeader}>
-            <Ionicons name="code-slash-outline" size={15} color={C.textSecondary} />
+            <Ionicons name="code-slash" size={15} color={C.textSecondary} />
             <Text style={[s.cardTitle, { color: C.textPrimary }]}>Developer</Text>
           </View>
           <View style={s.devRow}>
             <View style={[s.devAvatar, { backgroundColor: C.primary }]}>
               <Text style={[s.devAvatarText, { color: C.primaryFg }]}>A</Text>
             </View>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={[s.devName, { color: C.textPrimary }]}>AHMAD RAGASH PUTRA</Text>
               <Text style={[s.devRole, { color: C.textSecondary }]}>Mobile App Developer</Text>
               <Text style={[s.devEmail, { color: C.accentDrive }]}>ragashhmunthe@gmail.com</Text>
@@ -60,9 +70,10 @@ export default function TentangScreen() {
           </View>
         </View>
 
+        {/* Info Aplikasi */}
         <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
           <View style={s.cardHeader}>
-            <Ionicons name="information-circle-outline" size={15} color={C.textSecondary} />
+            <Ionicons name="information-circle" size={15} color={C.textSecondary} />
             <Text style={[s.cardTitle, { color: C.textPrimary }]}>Informasi Aplikasi</Text>
           </View>
           {[
@@ -79,9 +90,12 @@ export default function TentangScreen() {
           ))}
         </View>
 
+        {/* Copyright */}
         <Text style={[s.copyright, { color: C.textMuted }]}>
-          {'© 2024–2026 PT Capella Dinamik Nusantara.\nDikembangkan oleh Ahmad Ragash Putra.'}
+          © 2024–2026 PT Capella Dinamik Nusantara.{"\n"}Dikembangkan oleh Ahmad Ragash Putra.
         </Text>
+
+        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -91,21 +105,21 @@ const s = StyleSheet.create({
   safe: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 12, borderBottomWidth: 1 },
   backBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1 },
-  themeRow: { flexDirection: "row", alignItems: "center", gap: 2 },
+  themeBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1 },
   headerTitle: { fontSize: 15, fontWeight: "800" },
-  content: { padding: 14, gap: 12, paddingBottom: 40 },
+  content: { padding: 12, gap: 10, paddingBottom: 40 },
   logoSection: { alignItems: "center", paddingVertical: 24, gap: 6, borderRadius: 14, borderWidth: 1 },
-  logo: { width: 80, height: 80, borderRadius: 16 },
-  appName: { fontSize: 15, fontWeight: "900", textAlign: "center" },
+  logo: { width: 72, height: 72, borderRadius: 14 },
+  appName: { fontSize: 14, fontWeight: "900", textAlign: "center" },
   appCompany: { fontSize: 11, fontWeight: "600", textAlign: "center" },
   versionBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, marginTop: 4 },
   versionText: { fontSize: 11, fontWeight: "800" },
-  card: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 12 },
-  cardHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  card: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
+  cardHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
   cardTitle: { fontSize: 13, fontWeight: "800" },
   devRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  devAvatar: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  devAvatarText: { fontSize: 20, fontWeight: "900" },
+  devAvatar: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center" },
+  devAvatarText: { fontSize: 18, fontWeight: "900" },
   devName: { fontSize: 13, fontWeight: "900" },
   devRole: { fontSize: 11, marginTop: 1 },
   devEmail: { fontSize: 11, marginTop: 1, fontWeight: "600" },
