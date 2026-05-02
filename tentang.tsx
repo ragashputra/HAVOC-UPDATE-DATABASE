@@ -14,6 +14,16 @@ function getBorder(isDark: boolean) {
   return isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.22)";
 }
 
+// Warna label yang lebih kontras — dark: putih 75%, light: hitam 60%
+function getLabelColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.60)";
+}
+
+// Warna placeholder yang lebih kontras — dark: putih 55%, light: hitam 40%
+function getPlaceholderColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.40)";
+}
+
 
 const APP_VERSION = "2.3.0";
 

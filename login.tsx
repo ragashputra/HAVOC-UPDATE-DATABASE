@@ -18,6 +18,16 @@ function getBorder(isDark: boolean) {
   return isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.22)";
 }
 
+// Warna label yang lebih kontras — dark: putih 75%, light: hitam 60%
+function getLabelColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.60)";
+}
+
+// Warna placeholder yang lebih kontras — dark: putih 55%, light: hitam 40%
+function getPlaceholderColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.40)";
+}
+
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -53,31 +63,31 @@ export default function LoginScreen() {
             <Text style={[s.title, { color: C.textPrimary }]}>Masuk</Text>
             <Text style={[s.sub, { color: C.textSecondary }]}>Login dengan akun yang sudah terdaftar</Text>
 
-            <Text style={[s.label, { color: C.textMuted }]}>EMAIL</Text>
+            <Text style={[s.label, { color: getLabelColor(isDark) }]}>EMAIL</Text>
             <TextInput
               style={[s.input, { backgroundColor: C.inputBg, borderColor: getBorder(isDark), color: C.textPrimary }]}
               value={email}
               onChangeText={setEmail}
               placeholder="emailanda@gmail.com"
-              placeholderTextColor={C.textMuted}
+              placeholderTextColor={getPlaceholderColor(isDark)}
               autoCapitalize="none"
               keyboardType="email-address"
               editable={!busy}
             />
 
-            <Text style={[s.label, { color: C.textMuted }]}>PASSWORD</Text>
+            <Text style={[s.label, { color: getLabelColor(isDark) }]}>PASSWORD</Text>
             <View style={[s.pwdRow, { backgroundColor: C.inputBg, borderColor: getBorder(isDark) }]}>
               <TextInput
                 style={[s.pwdInput, { color: C.textPrimary }]}
                 value={password}
                 onChangeText={setPassword}
                 placeholder="••••••••"
-                placeholderTextColor={C.textMuted}
+                placeholderTextColor={getPlaceholderColor(isDark)}
                 secureTextEntry={!showPwd}
                 editable={!busy}
               />
               <TouchableOpacity style={s.eyeBtn} onPress={() => setShowPwd(v => !v)}>
-                <Ionicons name={showPwd ? "eye-off" : "eye"} size={20} color={C.textMuted} />
+                <Ionicons name={showPwd ? "eye-off" : "eye"} size={20} color={getLabelColor(isDark)} />
               </TouchableOpacity>
             </View>
 

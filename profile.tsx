@@ -18,6 +18,16 @@ function getBorder(isDark: boolean) {
   return isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.22)";
 }
 
+// Warna label yang lebih kontras — dark: putih 75%, light: hitam 60%
+function getLabelColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.60)";
+}
+
+// Warna placeholder yang lebih kontras — dark: putih 55%, light: hitam 40%
+function getPlaceholderColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.40)";
+}
+
 
 export default function ProfileScreen() {
   const { user, updateProfile, refreshUser, generateRecoveryToken, getRecoveryStatus } = useAuth();
@@ -109,28 +119,28 @@ export default function ProfileScreen() {
             <Text style={[s.cardTitle, { color: C.textPrimary }]}>Data Karyawan</Text>
           </View>
 
-          <Text style={[s.label, { color: C.textMuted }]}>NAMA LENGKAP</Text>
+          <Text style={[s.label, { color: getLabelColor(isDark) }]}>NAMA LENGKAP</Text>
           <TextInput
             style={[s.input, { backgroundColor: C.inputBg, borderColor: getBorder(isDark), color: C.textPrimary }]}
             value={namaLengkap}
             onChangeText={setNamaLengkap}
             placeholder="Nama lengkap"
-            placeholderTextColor={C.textMuted}
+            placeholderTextColor={getPlaceholderColor(isDark)}
             autoCapitalize="words"
             editable={!savingProfile}
           />
 
-          <Text style={[s.label, { color: C.textMuted }]}>UNIT USAHA</Text>
+          <Text style={[s.label, { color: getLabelColor(isDark) }]}>UNIT USAHA</Text>
           <TextInput
             style={[s.input, { backgroundColor: C.inputBg, borderColor: getBorder(isDark), color: C.textPrimary }]}
             value={unitUsaha}
             onChangeText={(t) => setUnitUsaha(t.toUpperCase())}
             placeholder="Nama cabang/unit usaha"
-            placeholderTextColor={C.textMuted}
+            placeholderTextColor={getPlaceholderColor(isDark)}
             autoCapitalize="characters"
             editable={!savingProfile}
           />
-          <Text style={[s.hint, { color: C.textMuted }]}>Nama cabang/unit usaha tempat bertugas.</Text>
+          <Text style={[s.hint, { color: getLabelColor(isDark) }]}>Nama cabang/unit usaha tempat bertugas.</Text>
 
           <TouchableOpacity
             style={[s.btnPrimary, { backgroundColor: C.primary, opacity: savingProfile ? 0.7 : 1 }]}
@@ -153,7 +163,7 @@ export default function ProfileScreen() {
             <Ionicons name="key" size={15} color={C.textSecondary} />
             <Text style={[s.cardTitle, { color: C.textPrimary }]}>Kode Recovery Password</Text>
           </View>
-          <Text style={[s.hint, { color: C.textMuted }]}>
+          <Text style={[s.hint, { color: getLabelColor(isDark) }]}>
             Kode cadangan jika lupa password. Ditampilkan SEKALI SAJA — wajib di-screenshot.
           </Text>
 
@@ -257,7 +267,7 @@ const s = StyleSheet.create({
   cardTitle: { fontSize: 13, fontWeight: "800" },
   label: { fontSize: 10, fontWeight: "700", letterSpacing: 1.2, marginTop: 4 },
   input: { height: 46, borderWidth: 2, borderRadius: 12, paddingHorizontal: 13, fontSize: 14, fontWeight: "500" },
-  hint: { fontSize: 12, lineHeight: 17 },
+  hint: { fontSize: 13, fontWeight: "500", lineHeight: 18 },
   statusBox: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 10, borderWidth: 1.5 },
   statusText: { fontSize: 12, fontWeight: "600", flex: 1 },
   btnPrimary: { height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 7, marginTop: 2 },

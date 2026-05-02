@@ -18,6 +18,16 @@ function getBorder(isDark: boolean) {
   return isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.22)";
 }
 
+// Warna label yang lebih kontras — dark: putih 75%, light: hitam 60%
+function getLabelColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.60)";
+}
+
+// Warna placeholder yang lebih kontras — dark: putih 55%, light: hitam 40%
+function getPlaceholderColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.40)";
+}
+
 
 export default function FolderDriveScreen() {
   const { user, updateDriveFolder } = useAuth();
@@ -67,13 +77,13 @@ export default function FolderDriveScreen() {
             File rekaman & foto CDB akan masuk ke subfolder nomor mesin di dalam folder ini.
           </Text>
 
-          <Text style={[s.label, { color: C.textMuted }]}>FOLDER ID / URL DRIVE</Text>
+          <Text style={[s.label, { color: getLabelColor(isDark) }]}>FOLDER ID / URL DRIVE</Text>
           <TextInput
             style={[s.input, { backgroundColor: C.inputBg, borderColor: getBorder(isDark), color: C.textPrimary }]}
             value={folderInput}
             onChangeText={setFolderInput}
             placeholder="Paste URL atau Folder ID Google Drive"
-            placeholderTextColor={C.textMuted}
+            placeholderTextColor={getPlaceholderColor(isDark)}
             autoCapitalize="none"
             editable={!saving}
             multiline

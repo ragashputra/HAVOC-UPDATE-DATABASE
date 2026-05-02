@@ -1,6 +1,7 @@
 // ============================================================
 // ganti-password.tsx — UPDATED
 // Perubahan: Header compact konsisten dengan navbar baru
+//            + Kontras teks label & placeholder lebih jelas
 // ============================================================
 import React, { useState } from "react";
 import {
@@ -18,6 +19,16 @@ function getBorder(isDark: boolean) {
   return isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.22)";
 }
 
+// Warna label yang lebih kontras — dark: putih 75%, light: hitam 60%
+function getLabelColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.60)";
+}
+
+// Warna placeholder yang lebih kontras — dark: putih 55%, light: hitam 40%
+function getPlaceholderColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.40)";
+}
+
 
 export default function GantiPasswordScreen() {
   const { changePassword } = useAuth();
@@ -32,7 +43,6 @@ export default function GantiPasswordScreen() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // field definitions moved inline below
   const onSubmit = async () => {
     if (!oldPwd || !newPwd) { Alert.alert("Tidak valid", "Semua field wajib diisi"); return; }
     if (newPwd.length < 6) { Alert.alert("Tidak valid", "Password baru minimal 6 karakter"); return; }
@@ -74,19 +84,21 @@ export default function GantiPasswordScreen() {
 
           {fields.map((f, i) => (
             <View key={i}>
-              <Text style={[s.label, { color: C.textMuted }]}>{f.label}</Text>
+              {/* Label lebih kontras */}
+              <Text style={[s.label, { color: getLabelColor(isDark) }]}>{f.label}</Text>
               <View style={[s.pwdRow, { backgroundColor: C.inputBg, borderColor: getBorder(isDark) }]}>
                 <TextInput
                   style={[s.input, { color: C.textPrimary }]}
                   value={f.value}
                   onChangeText={f.onChange}
                   placeholder="••••••••"
-                  placeholderTextColor={C.textMuted}
+                  placeholderTextColor={getPlaceholderColor(isDark)}
                   secureTextEntry={!f.show}
                   editable={!saving}
                 />
+                {/* Ikon eye lebih kontras */}
                 <TouchableOpacity style={s.eyeBtn} onPress={f.toggle}>
-                  <Ionicons name={f.show ? "eye-off" : "eye"} size={20} color={C.textMuted} />
+                  <Ionicons name={f.show ? "eye-off" : "eye"} size={20} color={getLabelColor(isDark)} />
                 </TouchableOpacity>
               </View>
             </View>

@@ -18,6 +18,16 @@ function getBorder(isDark: boolean) {
   return isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.22)";
 }
 
+// Warna label yang lebih kontras — dark: putih 75%, light: hitam 60%
+function getLabelColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.60)";
+}
+
+// Warna placeholder yang lebih kontras — dark: putih 55%, light: hitam 40%
+function getPlaceholderColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.40)";
+}
+
 
 export default function RegisterScreen() {
   const { register } = useAuth();
@@ -63,24 +73,24 @@ export default function RegisterScreen() {
             <Text style={[s.title, { color: C.textPrimary }]}>Daftar</Text>
             <Text style={[s.sub, { color: C.textSecondary }]}>Buat akun baru untuk akses aplikasi</Text>
 
-            <Text style={[s.label, { color: C.textMuted }]}>NAMA LENGKAP</Text>
+            <Text style={[s.label, { color: getLabelColor(isDark) }]}>NAMA LENGKAP</Text>
             <TextInput
               style={[s.input, { backgroundColor: C.inputBg, borderColor: getBorder(isDark), color: C.textPrimary }]}
               value={namaLengkap}
               onChangeText={handleNamaChange}
               placeholder="Contoh: AHMAD RAGASH PUTRA"
-              placeholderTextColor={C.textMuted}
+              placeholderTextColor={getPlaceholderColor(isDark)}
               autoCapitalize="characters"
               editable={!busy}
             />
 
-            <Text style={[s.label, { color: C.textMuted }]}>EMAIL</Text>
+            <Text style={[s.label, { color: getLabelColor(isDark) }]}>EMAIL</Text>
             <TextInput
               style={[s.input, { backgroundColor: C.inputBg, borderColor: getBorder(isDark), color: C.textPrimary }]}
               value={email}
               onChangeText={setEmail}
               placeholder="emailanda@gmail.com"
-              placeholderTextColor={C.textMuted}
+              placeholderTextColor={getPlaceholderColor(isDark)}
               autoCapitalize="none"
               keyboardType="email-address"
               editable={!busy}
@@ -91,19 +101,19 @@ export default function RegisterScreen() {
               { label: "KONFIRMASI PASSWORD", show: showConfirm, toggle: () => setShowConfirm(v => !v), value: confirm, onChange: setConfirm },
             ].map((f, i) => (
               <View key={i}>
-                <Text style={[s.label, { color: C.textMuted }]}>{f.label}</Text>
+                <Text style={[s.label, { color: getLabelColor(isDark) }]}>{f.label}</Text>
                 <View style={[s.pwdRow, { backgroundColor: C.inputBg, borderColor: getBorder(isDark) }]}>
                   <TextInput
                     style={[s.pwdInput, { color: C.textPrimary }]}
                     value={f.value}
                     onChangeText={f.onChange}
                     placeholder="••••••••"
-                    placeholderTextColor={C.textMuted}
+                    placeholderTextColor={getPlaceholderColor(isDark)}
                     secureTextEntry={!f.show}
                     editable={!busy}
                   />
                   <TouchableOpacity style={s.eyeBtn} onPress={f.toggle}>
-                    <Ionicons name={f.show ? "eye-off" : "eye"} size={20} color={C.textMuted} />
+                    <Ionicons name={f.show ? "eye-off" : "eye"} size={20} color={getLabelColor(isDark)} />
                   </TouchableOpacity>
                 </View>
               </View>

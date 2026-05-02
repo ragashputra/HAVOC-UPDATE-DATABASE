@@ -51,6 +51,16 @@ function getBorder(isDark: boolean) {
   return isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.22)";
 }
 
+// Warna label yang lebih kontras — dark: putih 75%, light: hitam 60%
+function getLabelColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.60)";
+}
+
+// Warna placeholder yang lebih kontras — dark: putih 55%, light: hitam 40%
+function getPlaceholderColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.40)";
+}
+
 // ─── Helpers ──────────────────────────────────────────────────
 function formatTime(ms) {
   const total = Math.floor(ms / 1000);
@@ -640,13 +650,13 @@ export default function Index() {
               )}
             </View>
 
-            <Text style={[s.label, { color: C.textMuted }]}>NAMA KONSUMEN</Text>
+            <Text style={[s.label, { color: getLabelColor(isDark) }]}>NAMA KONSUMEN</Text>
             <TextInput
               style={[s.input, { backgroundColor: C.inputBg, borderColor: namaKonsumen.trim().length >= 2 ? GREEN + "cc" : getBorder(isDark), color: C.textPrimary }]}
               value={namaKonsumen}
               onChangeText={handleNamaKonsumenChange}
               placeholder="Contoh: AHMAD RAGASH PUTRA"
-              placeholderTextColor={C.textMuted}
+              placeholderTextColor={getPlaceholderColor(isDark)}
               autoCapitalize="characters"
               editable={!uploading}
               returnKeyType="next"
@@ -654,7 +664,7 @@ export default function Index() {
 
             {/* Nomor mesin — indikator hijau/merah */}
             <View style={s.mesinLabelRow}>
-              <Text style={[s.label, { color: C.textMuted, marginTop: 0 }]}>NOMOR MESIN</Text>
+              <Text style={[s.label, { color: getLabelColor(isDark), marginTop: 0 }]}>NOMOR MESIN</Text>
               {mesinValid && (
                 <View style={[s.mesinBadge, { backgroundColor: GREEN + "20", borderColor: GREEN + "99" }]}>
                   <Ionicons name="checkmark-circle" size={11} color={GREEN} />
@@ -677,7 +687,7 @@ export default function Index() {
               value={nomorMesin}
               onChangeText={handleNomorMesinChange}
               placeholder="Contoh: JMH2E 1234567"
-              placeholderTextColor={C.textMuted}
+              placeholderTextColor={getPlaceholderColor(isDark)}
               autoCapitalize="characters"
               keyboardType={nomorMesinKeyboard}
               maxLength={13}
@@ -733,7 +743,7 @@ export default function Index() {
                   <>
                     <View style={s.orDivider}>
                       <View style={[s.orLine, { backgroundColor: getBorder(isDark) }]} />
-                      <Text style={[s.orText, { color: C.textMuted }]}>atau</Text>
+                      <Text style={[s.orText, { color: getLabelColor(isDark) }]}>atau</Text>
                       <View style={[s.orLine, { backgroundColor: getBorder(isDark) }]} />
                     </View>
                     <TouchableOpacity
@@ -745,7 +755,7 @@ export default function Index() {
                       <Ionicons name="folder-open-outline" size={16} color={C.textSecondary} />
                       <Text style={[s.recBtnSmallText, { color: C.textSecondary }]}>Pilih dari File</Text>
                     </TouchableOpacity>
-                    <Text style={[s.browseHint, { color: C.textMuted }]}>
+                    <Text style={[s.browseHint, { color: getLabelColor(isDark) }]}>
                       Format: mp3, mp4, m4a, aac, wav
                     </Text>
                   </>
@@ -944,8 +954,8 @@ const s = StyleSheet.create({
   siapText: { fontSize: 11, fontWeight: "700" },
   orDivider: { flexDirection: "row", alignItems: "center", gap: 8, marginVertical: 2 },
   orLine: { flex: 1, height: 1 },
-  orText: { fontSize: 11, fontWeight: "600" },
-  browseHint: { fontSize: 10, fontWeight: "500", textAlign: "center", marginTop: 2 },
+  orText: { fontSize: 13, fontWeight: "700" },
+  browseHint: { fontSize: 12, fontWeight: "600", textAlign: "center", marginTop: 2 },
   cdbReadyRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5 },
   cdbSiapBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   cdbSiapText: { fontSize: 11, fontWeight: "700" },

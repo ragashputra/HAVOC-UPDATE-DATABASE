@@ -18,6 +18,16 @@ function getBorder(isDark: boolean) {
   return isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.22)";
 }
 
+// Warna label yang lebih kontras — dark: putih 75%, light: hitam 60%
+function getLabelColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.60)";
+}
+
+// Warna placeholder yang lebih kontras — dark: putih 55%, light: hitam 40%
+function getPlaceholderColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.40)";
+}
+
 function formatDate(iso) {
   try {
     const d = new Date(iso);
@@ -43,25 +53,25 @@ function ItemCard({ item, C, isDark, onDelete, deletingId }) {
   return (
     <View style={[ic.card, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
       <View style={[ic.typeIcon, { backgroundColor: photo ? C.cdbBg : C.verifikasiBg }]}>
-        <Ionicons name={photo ? "image" : "mic"} size={18} color={photo ? C.accentDrive : C.accentRecord} />
+        <Ionicons name={photo ? "image" : "mic"} size={16} color={photo ? C.accentDrive : C.accentRecord} />
       </View>
-      <View style={{ flex: 1, gap: 3 }}>
-        <Text style={[ic.name, { color: C.textPrimary }]}>{item.nama_konsumen}</Text>
+      <View style={{ flex: 1, gap: 2 }}>
+        <View style={ic.topRow}>
+          <Text style={[ic.name, { color: C.textPrimary }]} numberOfLines={1}>{item.nama_konsumen}</Text>
+          <View style={[ic.tag, { backgroundColor: photo ? C.cdbBg : C.verifikasiBg }]}>
+            <Text style={[ic.tagText, { color: photo ? C.accentDrive : C.accentRecord }]}>
+              {photo ? "Foto" : "Audio"}
+            </Text>
+          </View>
+        </View>
         <View style={ic.metaRow}>
           <View style={[ic.mesinChip, { backgroundColor: C.stripBg }]}>
             <Text style={[ic.mesinText, { color: C.textSecondary }]}>{item.nomor_mesin}</Text>
           </View>
-          <Text style={[ic.dot, { color: C.textMuted }]}>·</Text>
-          <Text style={[ic.meta, { color: C.textMuted }]}>{formatSize(item.size_bytes)}</Text>
-          <Text style={[ic.dot, { color: C.textMuted }]}>·</Text>
-          <Text style={[ic.meta, { color: C.textMuted }]}>{formatDate(item.uploaded_at)}</Text>
-        </View>
-        <View style={ic.tagRow}>
-          <View style={[ic.tag, { backgroundColor: photo ? C.cdbBg : C.verifikasiBg }]}>
-            <Text style={[ic.tagText, { color: photo ? C.accentDrive : C.accentRecord }]}>
-              {photo ? "Foto CDB" : "Audio"}
-            </Text>
-          </View>
+          <Text style={[ic.dot, { color: getLabelColor(isDark) }]}>·</Text>
+          <Text style={[ic.meta, { color: getLabelColor(isDark) }]}>{formatSize(item.size_bytes)}</Text>
+          <Text style={[ic.dot, { color: getLabelColor(isDark) }]}>·</Text>
+          <Text style={[ic.meta, { color: getLabelColor(isDark) }]}>{formatDate(item.uploaded_at)}</Text>
         </View>
       </View>
       <TouchableOpacity
@@ -71,25 +81,25 @@ function ItemCard({ item, C, isDark, onDelete, deletingId }) {
       >
         {deletingId === item.id
           ? <ActivityIndicator size="small" color={C.accentRecord} />
-          : <Ionicons name="trash-outline" size={16} color={C.accentRecord} />}
+          : <Ionicons name="trash-outline" size={15} color={C.accentRecord} />}
       </TouchableOpacity>
     </View>
   );
 }
 
 const ic = StyleSheet.create({
-  card: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 12, borderRadius: 14, borderWidth: 1 },
-  typeIcon: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  name: { fontSize: 13, fontWeight: "800" },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 5, flexWrap: "wrap" },
-  mesinChip: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  mesinText: { fontSize: 10, fontWeight: "600" },
-  dot: { fontSize: 10 },
-  meta: { fontSize: 10, fontWeight: "500" },
-  tagRow: { flexDirection: "row", gap: 5 },
-  tag: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
+  card: { flexDirection: "row", alignItems: "center", gap: 8, padding: 9, borderRadius: 12, borderWidth: 1 },
+  typeIcon: { width: 32, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 6 },
+  name: { fontSize: 13, fontWeight: "800", flex: 1 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 4, flexWrap: "wrap" },
+  mesinChip: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 5 },
+  mesinText: { fontSize: 11, fontWeight: "700" },
+  dot: { fontSize: 11 },
+  meta: { fontSize: 11, fontWeight: "600" },
+  tag: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 20 },
   tagText: { fontSize: 10, fontWeight: "700" },
-  trash: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1, marginTop: 2 },
+  trash: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center", borderWidth: 1 },
 });
 
 export default function HistoryScreen() {
@@ -164,7 +174,7 @@ export default function HistoryScreen() {
         <View style={{ flex: 1 }}>
           <Text style={[s.headerTitle, { color: C.textPrimary }]}>Riwayat Upload</Text>
           {items.length > 0 && (
-            <Text style={[s.headerSub, { color: C.textMuted }]}>
+            <Text style={[s.headerSub, { color: getLabelColor(isDark) }]}>
               {audioItems.length} audio · {photoItems.length} foto
             </Text>
           )}
@@ -177,13 +187,13 @@ export default function HistoryScreen() {
           s.searchBar,
           { backgroundColor: C.surface, borderColor: searchFocused ? C.primary : getBorder(isDark) }
         ]}>
-          <Ionicons name="search" size={16} color={C.textMuted} style={{ marginLeft: 10 }} />
+          <Ionicons name="search" size={16} color={getLabelColor(isDark)} style={{ marginLeft: 10 }} />
           <TextInput
             style={[s.searchInput, { color: C.textPrimary }]}
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Cari nama, nomor mesin..."
-            placeholderTextColor={C.textMuted}
+            placeholderTextColor={getPlaceholderColor(isDark)}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             returnKeyType="search"
@@ -191,7 +201,7 @@ export default function HistoryScreen() {
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery("")} style={s.clearBtn}>
-              <Ionicons name="close-circle" size={17} color={C.textMuted} />
+              <Ionicons name="close-circle" size={17} color={getLabelColor(isDark)} />
             </TouchableOpacity>
           )}
         </View>
@@ -229,7 +239,7 @@ export default function HistoryScreen() {
             }
             showsVerticalScrollIndicator={false}
             decelerationRate="normal"
-            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+            ItemSeparatorComponent={() => <View style={{ height: 5 }} />}
             renderItem={({ item }) => (
               <ItemCard
                 item={item}
@@ -251,7 +261,7 @@ const s = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 12, borderBottomWidth: 1 },
   iconBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1 },
   headerTitle: { fontSize: 15, fontWeight: "800" },
-  headerSub: { fontSize: 11, marginTop: 1 },
+  headerSub: { fontSize: 13, fontWeight: "600", marginTop: 1 },
   searchContainer: { paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1 },
   searchBar: { flexDirection: "row", alignItems: "center", borderRadius: 12, borderWidth: 1, height: 40 },
   searchInput: { flex: 1, fontSize: 14, fontWeight: "500", paddingVertical: 0, paddingHorizontal: 8 },
@@ -260,5 +270,5 @@ const s = StyleSheet.create({
   emptyIcon: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center" },
   emptyTitle: { fontSize: 15, fontWeight: "800" },
   emptyDesc: { fontSize: 12 },
-  list: { padding: 12, paddingBottom: 40 },
+  list: { padding: 10, paddingBottom: 40 },
 });
