@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Voice Record Customer Honda",
+    "name": "HAVOC",
     "slug": "voice-record-customer-honda",
-    "version": "2.1.0",
+    "version": "3.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "voicerecordcustomerhonda",
@@ -18,10 +18,10 @@
     },
     "android": {
       "package": "com.capelladinamiknusantara.audioarchiver",
-      "versionCode": 3,
+      "versionCode": 5,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#e02010"
       },
       "permissions": [
         "android.permission.RECORD_AUDIO"
@@ -41,7 +41,7 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#FFFFFF"
+          "backgroundColor": "#e02010"
         }
       ],
       [
