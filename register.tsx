@@ -13,9 +13,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../lib/auth";
 import { useTheme } from "../lib/theme";
 
+// Border tegas adaptive — dark: putih 30%, light: hitam 22%
+function getBorder(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.22)";
+}
+
+
 export default function RegisterScreen() {
   const { register } = useAuth();
-  const { C } = useTheme();
+  const { C, mode } = useTheme();
+  const isDark = mode === "dark";
   const [namaLengkap, setNamaLengkap] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,17 +55,17 @@ export default function RegisterScreen() {
         <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
           {/* Image: replace require() with actual import in your Expo project */}
-          {/* <Image source={require("../assets/images/icon.png")} style={[s.logo, { borderColor: C.border }]} resizeMode="contain" /> */}
+          {/* <Image source={require("../assets/images/icon.png")} style={[s.logo, { borderColor: getBorder(isDark) }]} resizeMode="contain" /> */}
           <Text style={[s.brand, { color: C.textPrimary }]}>Honda Visual On-site Capture</Text>
           <Text style={[s.brandSub, { color: C.textSecondary }]}>PT Capella Dinamik Nusantara</Text>
 
-          <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
+          <View style={[s.card, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
             <Text style={[s.title, { color: C.textPrimary }]}>Daftar</Text>
             <Text style={[s.sub, { color: C.textSecondary }]}>Buat akun baru untuk akses aplikasi</Text>
 
             <Text style={[s.label, { color: C.textMuted }]}>NAMA LENGKAP</Text>
             <TextInput
-              style={[s.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
+              style={[s.input, { backgroundColor: C.inputBg, borderColor: getBorder(isDark), color: C.textPrimary }]}
               value={namaLengkap}
               onChangeText={handleNamaChange}
               placeholder="Contoh: AHMAD RAGASH PUTRA"
@@ -69,7 +76,7 @@ export default function RegisterScreen() {
 
             <Text style={[s.label, { color: C.textMuted }]}>EMAIL</Text>
             <TextInput
-              style={[s.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
+              style={[s.input, { backgroundColor: C.inputBg, borderColor: getBorder(isDark), color: C.textPrimary }]}
               value={email}
               onChangeText={setEmail}
               placeholder="emailanda@gmail.com"
@@ -85,7 +92,7 @@ export default function RegisterScreen() {
             ].map((f, i) => (
               <View key={i}>
                 <Text style={[s.label, { color: C.textMuted }]}>{f.label}</Text>
-                <View style={[s.pwdRow, { backgroundColor: C.inputBg, borderColor: C.border }]}>
+                <View style={[s.pwdRow, { backgroundColor: C.inputBg, borderColor: getBorder(isDark) }]}>
                   <TextInput
                     style={[s.pwdInput, { color: C.textPrimary }]}
                     value={f.value}
@@ -138,15 +145,15 @@ const s = StyleSheet.create({
   logo: { width: 80, height: 80, marginTop: 16, borderRadius: 20, borderWidth: 1 },
   brand: { fontSize: 14, fontWeight: "800", marginTop: 12, textAlign: "center" },
   brandSub: { fontSize: 11, marginBottom: 24, textAlign: "center" },
-  card: { width: "100%", borderRadius: 20, borderWidth: 1, padding: 20, gap: 4 },
+  card: { width: "100%", borderRadius: 20, borderWidth: 1.5, padding: 20, gap: 4 },
   title: { fontSize: 22, fontWeight: "800" },
   sub: { fontSize: 12, marginBottom: 8 },
   label: { fontSize: 10, fontWeight: "700", letterSpacing: 1.2, marginBottom: 5, marginTop: 10 },
-  input: { height: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, fontWeight: "500" },
-  pwdRow: { flexDirection: "row", alignItems: "center", height: 48, borderWidth: 1, borderRadius: 12, overflow: "hidden" },
+  input: { height: 48, borderWidth: 2, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, fontWeight: "500" },
+  pwdRow: { flexDirection: "row", alignItems: "center", height: 48, borderWidth: 2, borderRadius: 12, overflow: "hidden" },
   pwdInput: { flex: 1, height: 48, paddingHorizontal: 14, fontSize: 15, fontWeight: "500" },
   eyeBtn: { width: 46, height: 48, alignItems: "center", justifyContent: "center" },
-  errBox: { flexDirection: "row", alignItems: "center", gap: 6, padding: 10, borderRadius: 10, borderWidth: 1, marginTop: 8 },
+  errBox: { flexDirection: "row", alignItems: "center", gap: 6, padding: 10, borderRadius: 10, borderWidth: 1.5, marginTop: 8 },
   errText: { fontSize: 12, fontWeight: "600", flex: 1 },
   btnPrimary: { marginTop: 14, height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   btnPrimaryText: { fontWeight: "700", fontSize: 15 },

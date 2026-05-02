@@ -13,9 +13,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../lib/auth";
 import { useTheme } from "../lib/theme";
 
+// Border tegas adaptive — dark: putih 30%, light: hitam 22%
+function getBorder(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.22)";
+}
+
+
 export default function ProfileScreen() {
   const { user, updateProfile, refreshUser, generateRecoveryToken, getRecoveryStatus } = useAuth();
-  const { C } = useTheme();
+  const { C, mode } = useTheme();
+  const isDark = mode === "dark";
   const router = useRouter();
 
   const [namaLengkap, setNamaLengkap] = useState(user?.nama_lengkap ?? "");
@@ -71,8 +78,8 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
       {/* Header compact */}
-      <View style={[s.header, { borderBottomColor: C.border, backgroundColor: C.headerBg }]}>
-        <TouchableOpacity onPress={() => router.back()} style={[s.iconBtn, { borderColor: C.border }]}>
+      <View style={[s.header, { borderBottomColor: getBorder(isDark), backgroundColor: C.headerBg }]}>
+        <TouchableOpacity onPress={() => router.back()} style={[s.iconBtn, { borderColor: getBorder(isDark) }]}>
           <Ionicons name="chevron-back" size={18} color={C.textPrimary} />
         </TouchableOpacity>
         <Text style={[s.headerTitle, { color: C.textPrimary }]}>Profil / Akun</Text>
@@ -82,7 +89,7 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={[s.content, { backgroundColor: C.bg }]} showsVerticalScrollIndicator={false}>
 
         {/* Avatar card */}
-        <View style={[s.avatarCard, { backgroundColor: C.surface, borderColor: C.border }]}>
+        <View style={[s.avatarCard, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
           <View style={[s.avatar, { backgroundColor: C.primary }]}>
             <Text style={[s.avatarText, { color: C.primaryFg }]}>{(user?.nama_lengkap ?? "U")[0].toUpperCase()}</Text>
           </View>
@@ -96,7 +103,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Edit profil */}
-        <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
+        <View style={[s.card, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
           <View style={s.cardRow}>
             <Ionicons name="person" size={15} color={C.textSecondary} />
             <Text style={[s.cardTitle, { color: C.textPrimary }]}>Data Karyawan</Text>
@@ -104,7 +111,7 @@ export default function ProfileScreen() {
 
           <Text style={[s.label, { color: C.textMuted }]}>NAMA LENGKAP</Text>
           <TextInput
-            style={[s.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
+            style={[s.input, { backgroundColor: C.inputBg, borderColor: getBorder(isDark), color: C.textPrimary }]}
             value={namaLengkap}
             onChangeText={setNamaLengkap}
             placeholder="Nama lengkap"
@@ -115,7 +122,7 @@ export default function ProfileScreen() {
 
           <Text style={[s.label, { color: C.textMuted }]}>UNIT USAHA</Text>
           <TextInput
-            style={[s.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
+            style={[s.input, { backgroundColor: C.inputBg, borderColor: getBorder(isDark), color: C.textPrimary }]}
             value={unitUsaha}
             onChangeText={(t) => setUnitUsaha(t.toUpperCase())}
             placeholder="Nama cabang/unit usaha"
@@ -141,7 +148,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Kode Recovery */}
-        <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
+        <View style={[s.card, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
           <View style={s.cardRow}>
             <Ionicons name="key" size={15} color={C.textSecondary} />
             <Text style={[s.cardTitle, { color: C.textPrimary }]}>Kode Recovery Password</Text>
@@ -152,7 +159,7 @@ export default function ProfileScreen() {
 
           <View style={[s.statusBox, {
             backgroundColor: recoveryStatus?.has_token ? C.badgeSuccessBg : C.badgeOffBg,
-            borderColor: recoveryStatus?.has_token ? C.accentSuccess : C.border
+            borderColor: recoveryStatus?.has_token ? C.accentSuccess : getBorder(isDark)
           }]}>
             <Ionicons
               name={recoveryStatus?.has_token ? "checkmark-circle" : "alert-circle"}
@@ -184,7 +191,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Navigasi lainnya */}
-        <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
+        <View style={[s.card, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
           {[
             { icon: "lock-closed-outline", label: "Ganti Password", route: "/ganti-password" },
             { icon: "folder-outline", label: "Folder Google Drive", route: "/folder-drive" },
@@ -192,7 +199,7 @@ export default function ProfileScreen() {
           ].map((item, i) => (
             <TouchableOpacity
               key={i}
-              style={[s.menuRow, i > 0 && { borderTopWidth: 1, borderTopColor: C.border }]}
+              style={[s.menuRow, i > 0 && { borderTopWidth: 1, borderTopColor: getBorder(isDark) }]}
               onPress={() => router.push(item.route)}
               activeOpacity={0.7}
             >
@@ -209,20 +216,20 @@ export default function ProfileScreen() {
       {/* Modal token */}
       <Modal visible={!!shownToken} transparent animationType="fade" onRequestClose={() => setShownToken(null)}>
         <View style={s.modalBackdrop}>
-          <View style={[s.tokenModal, { backgroundColor: C.surface, borderColor: C.border }]}>
+          <View style={[s.tokenModal, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
             <View style={[s.iconBox2, { backgroundColor: C.badgeSuccessBg }]}>
               <Ionicons name="key" size={28} color={C.accentSuccess} />
             </View>
             <Text style={[s.tokenModalTitle, { color: C.textPrimary }]}>Kode Recovery Anda</Text>
             <Text style={[s.tokenModalSub, { color: C.textSecondary }]}>Ditampilkan SEKALI SAJA — screenshot sekarang!</Text>
-            <View style={[s.tokenBox, { backgroundColor: C.bg, borderColor: C.border }]}>
+            <View style={[s.tokenBox, { backgroundColor: C.bg, borderColor: getBorder(isDark) }]}>
               <Text style={[s.tokenBoxText, { color: C.textPrimary }]}>{shownToken}</Text>
             </View>
             <TouchableOpacity style={[s.btnPrimary, { backgroundColor: C.primary, width: "100%" }]} onPress={copyToken} activeOpacity={0.8}>
               <Ionicons name="share-outline" size={16} color={C.primaryFg} />
               <Text style={[s.btnPrimaryText, { color: C.primaryFg }]}>Bagikan / Salin Kode</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[s.btnOutline, { borderColor: C.border, width: "100%" }]} onPress={() => setShownToken(null)} activeOpacity={0.8}>
+            <TouchableOpacity style={[s.btnOutline, { borderColor: getBorder(isDark), width: "100%" }]} onPress={() => setShownToken(null)} activeOpacity={0.8}>
               <Text style={[s.btnOutlineText, { color: C.textPrimary }]}>Sudah Saya Screenshot</Text>
             </TouchableOpacity>
           </View>
@@ -235,35 +242,35 @@ export default function ProfileScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 12, borderBottomWidth: 1 },
-  iconBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1 },
+  iconBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1.5 },
   headerTitle: { fontSize: 15, fontWeight: "800" },
   content: { padding: 12, gap: 10, paddingBottom: 40 },
-  avatarCard: { flexDirection: "row", alignItems: "center", gap: 14, padding: 14, borderRadius: 16, borderWidth: 1 },
+  avatarCard: { flexDirection: "row", alignItems: "center", gap: 14, padding: 14, borderRadius: 16, borderWidth: 1.5 },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   avatarText: { fontSize: 20, fontWeight: "800" },
   infoName: { fontSize: 14, fontWeight: "800" },
   infoEmail: { fontSize: 11, marginTop: 1 },
   roleBadge: { marginTop: 5, alignSelf: "flex-start", paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
   roleText: { fontSize: 10, fontWeight: "700" },
-  card: { borderRadius: 16, borderWidth: 1, padding: 14, gap: 8 },
+  card: { borderRadius: 16, borderWidth: 1.5, padding: 14, gap: 8 },
   cardRow: { flexDirection: "row", alignItems: "center", gap: 7 },
   cardTitle: { fontSize: 13, fontWeight: "800" },
   label: { fontSize: 10, fontWeight: "700", letterSpacing: 1.2, marginTop: 4 },
-  input: { height: 46, borderWidth: 1, borderRadius: 12, paddingHorizontal: 13, fontSize: 14, fontWeight: "500" },
+  input: { height: 46, borderWidth: 2, borderRadius: 12, paddingHorizontal: 13, fontSize: 14, fontWeight: "500" },
   hint: { fontSize: 12, lineHeight: 17 },
-  statusBox: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 10, borderWidth: 1 },
+  statusBox: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 10, borderWidth: 1.5 },
   statusText: { fontSize: 12, fontWeight: "600", flex: 1 },
   btnPrimary: { height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 7, marginTop: 2 },
   btnPrimaryText: { fontWeight: "700", fontSize: 14 },
-  btnOutline: { height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 7, borderWidth: 1 },
+  btnOutline: { height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 7, borderWidth: 1.5 },
   btnOutlineText: { fontWeight: "600", fontSize: 13 },
   menuRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12 },
   menuLabel: { flex: 1, fontSize: 13, fontWeight: "600" },
   iconBox2: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", marginBottom: 4 },
   modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", padding: 24 },
-  tokenModal: { width: "100%", borderRadius: 20, borderWidth: 1, padding: 22, alignItems: "center", gap: 10 },
+  tokenModal: { width: "100%", borderRadius: 20, borderWidth: 1.5, padding: 22, alignItems: "center", gap: 10 },
   tokenModalTitle: { fontSize: 17, fontWeight: "800" },
   tokenModalSub: { fontSize: 12, textAlign: "center" },
-  tokenBox: { width: "100%", paddingVertical: 16, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, alignItems: "center" },
+  tokenBox: { width: "100%", paddingVertical: 16, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1.5, alignItems: "center" },
   tokenBoxText: { fontSize: 32, fontWeight: "900", letterSpacing: 10, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" },
 });

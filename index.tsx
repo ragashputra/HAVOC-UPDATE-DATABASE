@@ -47,6 +47,10 @@ const WHATS_NEW_ITEMS = [
 const GREEN = "#16a34a";
 const RED   = "#dc2626";
 
+function getBorder(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.22)";
+}
+
 // ─── Helpers ──────────────────────────────────────────────────
 function formatTime(ms) {
   const total = Math.floor(ms / 1000);
@@ -62,7 +66,7 @@ function formatNomorMesin(raw) {
 }
 
 // ─── WhatsNew Modal ───────────────────────────────────────────
-function WhatsNewModal({ visible, onClose, C }) {
+function WhatsNewModal({ visible, onClose, C, isDark }) {
   const scaleAnim = useRef(new Animated.Value(0.88)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -80,7 +84,7 @@ function WhatsNewModal({ visible, onClose, C }) {
       <View style={wn.backdrop}>
         <Animated.View style={[
           wn.card,
-          { backgroundColor: C.surface, borderColor: C.border, transform: [{ scale: scaleAnim }], opacity: opacityAnim }
+          { backgroundColor: C.surface, borderColor: getBorder(isDark), transform: [{ scale: scaleAnim }], opacity: opacityAnim }
         ]}>
           {/* Icon minimalis */}
           <View style={[wn.iconRow, { backgroundColor: GREEN + "22", borderRadius: 12, padding: 6 }]}>
@@ -110,7 +114,7 @@ function WhatsNewModal({ visible, onClose, C }) {
 
 const wn = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)", alignItems: "center", justifyContent: "center", padding: 28 },
-  card: { width: "100%", maxWidth: 340, borderRadius: 20, borderWidth: 1, padding: 20, alignItems: "flex-start", gap: 4 },
+  card: { width: "100%", maxWidth: 340, borderRadius: 20, borderWidth: 1.5, padding: 20, alignItems: "flex-start", gap: 4 },
   iconRow: { flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start" },
   title: { fontSize: 16, fontWeight: "900" },
   itemRow: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -121,7 +125,7 @@ const wn = StyleSheet.create({
 });
 
 // ─── Loading Overlay ──────────────────────────────────────────
-function LoadingOverlay({ visible, label, progress, C }) {
+function LoadingOverlay({ visible, label, progress, C, isDark }) {
   const spin = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(0)).current;
 
@@ -140,12 +144,12 @@ function LoadingOverlay({ visible, label, progress, C }) {
 
   return (
     <Animated.View style={[ls.overlay, { opacity: fade }]}>
-      <View style={[ls.box, { backgroundColor: C.surface, borderColor: C.border }]}>
+      <View style={[ls.box, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
         <Animated.View style={[ls.ring, { borderColor: C.primary, borderTopColor: "transparent", transform: [{ rotate }] }]} />
         <Text style={[ls.label, { color: C.textPrimary }]}>{label}</Text>
         {progress !== undefined && (
           <>
-            <View style={[ls.bar, { backgroundColor: C.border }]}>
+            <View style={[ls.bar, { backgroundColor: getBorder(isDark) }]}>
               <View style={[ls.barFill, { backgroundColor: C.primary, width: `${Math.round(progress * 100)}%` }]} />
             </View>
             <Text style={[ls.pct, { color: C.textPrimary }]}>{Math.round(progress * 100)}%</Text>
@@ -158,7 +162,7 @@ function LoadingOverlay({ visible, label, progress, C }) {
 
 const ls = StyleSheet.create({
   overlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", zIndex: 999 },
-  box: { padding: 28, alignItems: "center", gap: 12, width: 200, borderRadius: 20, borderWidth: 1, shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 },
+  box: { padding: 28, alignItems: "center", gap: 12, width: 200, borderRadius: 20, borderWidth: 1.5, shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 },
   ring: { width: 44, height: 44, borderRadius: 22, borderWidth: 3 },
   label: { fontSize: 12, fontWeight: "700", textAlign: "center" },
   bar: { width: "100%", height: 5, borderRadius: 3, overflow: "hidden" },
@@ -210,18 +214,13 @@ const wf = StyleSheet.create({
   bar: { width: 3, height: 44, borderRadius: 2 },
 });
 
-// ─── PlaybackBar FIXED — posMs dikelola via ref ────────────────
-function PlaybackBar({ uri, durationMs, C, onDelete }) {
+// ─── PlaybackBar — tanpa seekbar, compact ─────────────────────
+function PlaybackBar({ uri, durationMs, C, isDark }) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [displayPos, setDisplayPos] = useState(0);   // ms, hanya untuk render
   const [totalMs, setTotalMs] = useState(durationMs || 0);
-  const [barWidth, setBarWidth] = useState(260);
 
   const soundRef = useRef(null);
   const intervalRef = useRef(null);
-  const isDragging = useRef(false);
-  const dragRatio = useRef(0);
-  const posRef = useRef(0);
 
   useEffect(() => {
     return () => {
@@ -239,8 +238,6 @@ function PlaybackBar({ uri, durationMs, C, onDelete }) {
     sound.setOnPlaybackStatusUpdate((s) => {
       if (s.isLoaded && s.didJustFinish) {
         setIsPlaying(false);
-        posRef.current = 0;
-        setDisplayPos(0);
         sound.setPositionAsync(0);
         clearInterval(intervalRef.current);
       }
@@ -255,90 +252,39 @@ function PlaybackBar({ uri, durationMs, C, onDelete }) {
       clearInterval(intervalRef.current);
       setIsPlaying(false);
     } else {
+      // Pastikan output ke speaker utama/besar, bukan earpiece
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
       await sound.playAsync();
       setIsPlaying(true);
-      intervalRef.current = setInterval(async () => {
-        if (isDragging.current) return;
-        const st = await sound.getStatusAsync();
-        if (st.isLoaded) {
-          posRef.current = st.positionMillis ?? 0;
-          setDisplayPos(posRef.current);
-        }
-      }, 80);
     }
   };
 
-  const handleSeekStart = (evt) => {
-    isDragging.current = true;
-    const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / barWidth));
-    dragRatio.current = ratio;
-    setDisplayPos(Math.floor(ratio * totalMs));
-  };
-
-  const handleSeekMove = (evt) => {
-    if (!isDragging.current) return;
-    const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / barWidth));
-    dragRatio.current = ratio;
-    setDisplayPos(Math.floor(ratio * totalMs));
-  };
-
-  const handleSeekEnd = async () => {
-    const ms = Math.floor(dragRatio.current * totalMs);
-    posRef.current = ms;
-    setDisplayPos(ms);
-    isDragging.current = false;
-    const sound = await getSound();
-    await sound.setPositionAsync(ms);
-  };
-
-  const ratio = totalMs > 0 ? displayPos / totalMs : 0;
-  const fillPct = `${Math.min(100, Math.round(ratio * 100))}%`;
-
   return (
-    <View style={[pb.container, { backgroundColor: C.surface, borderColor: C.border }]}>
+    <View style={[pb.container, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
       <TouchableOpacity style={[pb.playBtn, { backgroundColor: C.primary }]} onPress={togglePlay} activeOpacity={0.8}>
-        <Ionicons name={isPlaying ? "pause" : "play"} size={20} color={C.primaryFg} />
+        <Ionicons name={isPlaying ? "pause" : "play"} size={18} color={C.primaryFg} />
       </TouchableOpacity>
-
-      <View style={{ flex: 1, gap: 4 }}>
-        <View
-          style={[pb.barTrack, { backgroundColor: C.border }]}
-          onLayout={e => setBarWidth(e.nativeEvent.layout.width)}
-          onStartShouldSetResponder={() => true}
-          onMoveShouldSetResponder={() => true}
-          onResponderGrant={handleSeekStart}
-          onResponderMove={handleSeekMove}
-          onResponderRelease={handleSeekEnd}
-        >
-          <View style={[pb.fill, { backgroundColor: C.primary, width: fillPct }]} />
-          <View style={[pb.thumb, { backgroundColor: C.primary, left: fillPct }]} />
-        </View>
-        <View style={pb.timeRow}>
-          <Text style={[pb.timeText, { color: C.textMuted }]}>{formatTime(displayPos)}</Text>
-          <Text style={[pb.timeText, { color: C.textMuted }]}>{formatTime(totalMs)}</Text>
-        </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[pb.label, { color: C.textPrimary }]}>Audio terekam</Text>
+        <Text style={[pb.dur, { color: C.textMuted }]}>{formatTime(totalMs)}</Text>
       </View>
-
-      <TouchableOpacity
-        onPress={onDelete}
-        style={[pb.trashBtn, { borderColor: C.border, backgroundColor: C.deleteBtn }]}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="trash-outline" size={16} color={C.accentRecord} />
-      </TouchableOpacity>
     </View>
   );
 }
 
 const pb = StyleSheet.create({
-  container: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 14, borderWidth: 1 },
-  playBtn: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center" },
-  barTrack: { height: 8, borderRadius: 4, overflow: "visible", position: "relative" },
-  fill: { height: 8, borderRadius: 4, position: "absolute", top: 0, left: 0 },
-  thumb: { width: 18, height: 18, borderRadius: 9, position: "absolute", top: -5, marginLeft: -9, backgroundColor: "#fff", shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 4, elevation: 4 },
-  timeRow: { flexDirection: "row", justifyContent: "space-between" },
-  timeText: { fontSize: 10, fontWeight: "600", fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" },
-  trashBtn: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1 },
+  container: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5 },
+  playBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  label: { fontSize: 12, fontWeight: "700" },
+  dur: { fontSize: 11, fontWeight: "500", fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", marginTop: 1 },
+  badge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  badgeText: { fontSize: 11, fontWeight: "700" },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────
@@ -390,8 +336,8 @@ export default function Index() {
 
   // 13 karakter = 5 kode + 1 spasi + 7 angka (display) = raw 12
   const mesinRaw = nomorMesin.replace(/\s/g, "");
-  const mesinValid = mesinRaw.length === 13;
-  const mesinTyping = mesinRaw.length > 0 && mesinRaw.length < 13;
+  const mesinValid = mesinRaw.length === 12;
+  const mesinTyping = mesinRaw.length > 0 && mesinRaw.length < 12;
 
   const canUpload = !!recordingUri && !!namaKonsumen.trim() && mesinValid && driveConnected;
 
@@ -490,6 +436,14 @@ export default function Index() {
     setIsRecording(false);
     try {
       await recordingRef.current.stopAndUnloadAsync();
+      // Reset ke mode playback — WAJIB agar suara keluar dari speaker besar, bukan earpiece
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false, // speaker utama Android
+      });
       const uri = recordingRef.current.getURI();
       const ms = Date.now() - startTimeRef.current;
       setRecordingMs(ms);
@@ -536,7 +490,7 @@ export default function Index() {
     if (!canUpload) return;
     const nama = namaKonsumen.trim();
     const mesin = nomorMesin.replace(/\s/g, "");
-    if (mesin.length !== 13) { Alert.alert("Nomor Mesin", "Nomor mesin harus 13 karakter (5 kode + 8 angka)."); return; }
+    if (mesin.length !== 12) { Alert.alert("Nomor Mesin", "Nomor mesin harus 12 karakter (5 kode + 8 angka)."); return; }
 
     setUploading(true);
     setUploadProgress(0);
@@ -593,27 +547,27 @@ export default function Index() {
     <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
 
       {/* ── NAVBAR ── */}
-      <View style={[s.navbar, { backgroundColor: C.headerBg, borderBottomColor: C.border }]}>
+      <View style={[s.navbar, { backgroundColor: C.headerBg, borderBottomColor: getBorder(isDark) }]}>
         <View style={s.navLeft}>
           {/* <Image source={require("../assets/images/icon.png")} style={s.navLogo} resizeMode="contain" /> */}
           <View>
-            <Text style={[s.navTitle, { color: C.textPrimary }]}>HVOC</Text>
-            <Text style={[s.navSub, { color: C.textMuted }]}>Honda Visual On-site Capture</Text>
+            <Text style={[s.navTitle, { color: C.textPrimary }]}>Honda Visual On-site Capture</Text>
+            <Text style={[s.navSub, { color: C.textMuted }]}>PT Capella Dinamik Nusantara</Text>
           </View>
         </View>
         {/* Icon lebih besar, border lebih tebal */}
         <View style={s.navRight}>
-          <TouchableOpacity style={[s.navBtn, { borderColor: C.border }]} onPress={toggleTheme} activeOpacity={0.7}>
+          <TouchableOpacity style={[s.navBtn, { borderColor: getBorder(isDark) }]} onPress={toggleTheme} activeOpacity={0.7}>
             <Ionicons name={isDark ? "sunny" : "moon"} size={20} color={C.textSecondary} />
           </TouchableOpacity>
-          <TouchableOpacity style={[s.navBtn, { borderColor: C.border }]} onPress={() => router.push("/history")} activeOpacity={0.7}>
+          <TouchableOpacity style={[s.navBtn, { borderColor: getBorder(isDark) }]} onPress={() => router.push("/history")} activeOpacity={0.7}>
             <Ionicons name="time-outline" size={20} color={C.textSecondary} />
           </TouchableOpacity>
-          <TouchableOpacity style={[s.navBtn, { borderColor: C.border }]} onPress={() => router.push("/profile")} activeOpacity={0.7}>
+          <TouchableOpacity style={[s.navBtn, { borderColor: getBorder(isDark) }]} onPress={() => router.push("/profile")} activeOpacity={0.7}>
             <Ionicons name="person-circle-outline" size={21} color={C.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[s.navBtn, { borderColor: C.border }]}
+            style={[s.navBtn, { borderColor: getBorder(isDark) }]}
             onPress={() => Alert.alert("Logout?", "Yakin ingin keluar?", [
               { text: "Batal", style: "cancel" },
               { text: "Logout", style: "destructive", onPress: () => logout() },
@@ -635,7 +589,7 @@ export default function Index() {
         >
 
           {/* ── Drive Status — glowing icon ── */}
-          <View style={[s.card, { backgroundColor: C.surface, borderColor: driveConnected ? GREEN + "55" : RED + "44" }]}>
+          <View style={[s.card, { backgroundColor: C.surface, borderColor: driveConnected ? GREEN + "99" : RED + "88" }]}>
             <View style={s.cardRow}>
               {/* Ikon cloud glowing */}
               <View style={[s.iconBox, {
@@ -658,7 +612,7 @@ export default function Index() {
               </View>
               {!checkingStatus && (
                 <TouchableOpacity
-                  style={[s.driveBadge, { backgroundColor: driveConnected ? RED + "18" : GREEN + "22", borderWidth: 1, borderColor: driveConnected ? RED + "55" : GREEN + "55" }]}
+                  style={[s.driveBadge, { backgroundColor: driveConnected ? RED + "18" : GREEN + "22", borderWidth: 1.5, borderColor: driveConnected ? RED + "99" : GREEN + "99" }]}
                   onPress={driveConnected ? handleDisconnectDrive : handleConnectDrive}
                   disabled={connecting}
                   activeOpacity={0.8}
@@ -675,12 +629,20 @@ export default function Index() {
           </View>
 
           {/* ── Form Input ── */}
-          <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
-            <Text style={[s.sectionTitle, { color: C.textPrimary }]}>Data Konsumen</Text>
+          <View style={[s.card, { backgroundColor: C.surface, borderColor: (namaKonsumen.trim().length >= 2 && mesinValid) ? GREEN + "cc" : getBorder(isDark) }]}>
+            <View style={s.cardHeaderRow}>
+              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>Data Konsumen</Text>
+              {namaKonsumen.trim().length >= 2 && mesinValid && (
+                <View style={[s.siapBadge, { backgroundColor: GREEN + "22" }]}>
+                  <Ionicons name="checkmark-circle" size={13} color={GREEN} />
+                  <Text style={[s.siapText, { color: GREEN }]}>Siap</Text>
+                </View>
+              )}
+            </View>
 
             <Text style={[s.label, { color: C.textMuted }]}>NAMA KONSUMEN</Text>
             <TextInput
-              style={[s.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
+              style={[s.input, { backgroundColor: C.inputBg, borderColor: namaKonsumen.trim().length >= 2 ? GREEN + "cc" : getBorder(isDark), color: C.textPrimary }]}
               value={namaKonsumen}
               onChangeText={handleNamaKonsumenChange}
               placeholder="Contoh: AHMAD RAGASH PUTRA"
@@ -694,39 +656,47 @@ export default function Index() {
             <View style={s.mesinLabelRow}>
               <Text style={[s.label, { color: C.textMuted, marginTop: 0 }]}>NOMOR MESIN</Text>
               {mesinValid && (
-                <View style={[s.mesinBadge, { backgroundColor: GREEN + "20", borderColor: GREEN + "60" }]}>
+                <View style={[s.mesinBadge, { backgroundColor: GREEN + "20", borderColor: GREEN + "99" }]}>
                   <Ionicons name="checkmark-circle" size={11} color={GREEN} />
-                  <Text style={[s.mesinBadgeText, { color: GREEN }]}>13 karakter</Text>
+                  <Text style={[s.mesinBadgeText, { color: GREEN }]}>12 karakter</Text>
                 </View>
               )}
               {mesinTyping && (
-                <View style={[s.mesinBadge, { backgroundColor: RED + "18", borderColor: RED + "55" }]}>
+                <View style={[s.mesinBadge, { backgroundColor: RED + "18", borderColor: RED + "99" }]}>
                   <Ionicons name="close-circle" size={11} color={RED} />
-                  <Text style={[s.mesinBadgeText, { color: RED }]}>{mesinRaw.length}/13</Text>
+                  <Text style={[s.mesinBadgeText, { color: RED }]}>{mesinRaw.length}/12</Text>
                 </View>
               )}
             </View>
             <TextInput
               style={[s.input, {
                 backgroundColor: C.inputBg,
-                borderColor: mesinValid ? GREEN + "88" : mesinTyping ? RED + "77" : C.border,
+                borderColor: mesinValid ? GREEN + "cc" : mesinTyping ? RED + "bb" : getBorder(isDark),
                 color: C.textPrimary,
               }]}
               value={nomorMesin}
               onChangeText={handleNomorMesinChange}
-              placeholder="Contoh: JMH2E 12345678"
+              placeholder="Contoh: JMH2E 1234567"
               placeholderTextColor={C.textMuted}
               autoCapitalize="characters"
               keyboardType={nomorMesinKeyboard}
-              maxLength={14}
+              maxLength={13}
               editable={!uploading}
               returnKeyType="done"
             />
           </View>
 
           {/* ── Rekam Audio ── */}
-          <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
-            <Text style={[s.sectionTitle, { color: C.textPrimary }]}>Rekam Audio</Text>
+          <View style={[s.card, { backgroundColor: C.surface, borderColor: recordingUri ? GREEN + "cc" : getBorder(isDark) }]}>
+            <View style={s.cardHeaderRow}>
+              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>Rekam Audio</Text>
+              {recordingUri && (
+                <View style={[s.siapBadge, { backgroundColor: GREEN + "22" }]}>
+                  <Ionicons name="checkmark-circle" size={13} color={GREEN} />
+                  <Text style={[s.siapText, { color: GREEN }]}>Siap</Text>
+                </View>
+              )}
+            </View>
 
             {isRecording && <Waveform isRecording={isRecording} />}
 
@@ -734,74 +704,144 @@ export default function Index() {
               <Text style={[s.recTimer, { color: GREEN }]}>{formatTime(recordingMs)}</Text>
             )}
 
-            <View style={s.recBtnRow}>
-              {!isRecording ? (
-                <TouchableOpacity
-                  style={[s.recBtn, { backgroundColor: C.accentRecord, flex: 1 }]}
-                  onPress={startRecording}
-                  disabled={uploading}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="mic" size={20} color="#FFF" />
-                  <Text style={s.recBtnText}>Mulai Rekam</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={[s.recBtn, { backgroundColor: C.primary, flex: 1 }]}
-                  onPress={stopRecording}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="stop" size={20} color={C.primaryFg} />
-                  <Text style={[s.recBtnText, { color: C.primaryFg }]}>Hentikan</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+            {/* Tombol rekam: hanya tampil jika belum ada rekaman atau sedang rekam */}
+            {!recordingUri && (
+              <>
+                <View style={s.recBtnRow}>
+                  {!isRecording ? (
+                    <TouchableOpacity
+                      style={[s.recBtn, { backgroundColor: C.accentRecord, flex: 1 }]}
+                      onPress={startRecording}
+                      disabled={uploading}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="mic" size={20} color="#FFF" />
+                      <Text style={s.recBtnText}>Mulai Rekam</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={[s.recBtn, { backgroundColor: C.primary, flex: 1 }]}
+                      onPress={stopRecording}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="stop" size={20} color={C.primaryFg} />
+                      <Text style={[s.recBtnText, { color: C.primaryFg }]}>Hentikan</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {!isRecording && (
+                  <>
+                    <View style={s.orDivider}>
+                      <View style={[s.orLine, { backgroundColor: getBorder(isDark) }]} />
+                      <Text style={[s.orText, { color: C.textMuted }]}>atau</Text>
+                      <View style={[s.orLine, { backgroundColor: getBorder(isDark) }]} />
+                    </View>
+                    <TouchableOpacity
+                      style={[s.recBtnSmall, { backgroundColor: C.surface, borderColor: getBorder(isDark), width: "100%" }]}
+                      onPress={pickAudio}
+                      disabled={uploading}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="folder-open-outline" size={16} color={C.textSecondary} />
+                      <Text style={[s.recBtnSmallText, { color: C.textSecondary }]}>Pilih dari File</Text>
+                    </TouchableOpacity>
+                    <Text style={[s.browseHint, { color: C.textMuted }]}>
+                      Format: mp3, mp4, m4a, aac, wav
+                    </Text>
+                  </>
+                )}
+              </>
+            )}
 
+            {/* Setelah selesai rekam: preview + tombol ulangi & hapus */}
             {recordingUri && !isRecording && (
-              <PlaybackBar
-                uri={recordingUri}
-                durationMs={recordingMs}
-                C={C}
-                onDelete={() => { setRecordingUri(null); setRecordingName(null); setRecordingMs(0); }}
-              />
+              <>
+                <PlaybackBar uri={recordingUri} durationMs={recordingMs} C={C} isDark={isDark} />
+                <View style={s.recBtnRow}>
+                  <TouchableOpacity
+                    style={[s.recBtnSmall, { backgroundColor: C.surface, borderColor: getBorder(isDark), flex: 1 }]}
+                    onPress={() => { setRecordingUri(null); setRecordingName(null); setRecordingMs(0); startRecording(); }}
+                    disabled={uploading}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="refresh" size={15} color={C.textSecondary} />
+                    <Text style={[s.recBtnSmallText, { color: C.textSecondary }]}>Ulangi</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.recBtnSmall, { backgroundColor: RED + "15", borderColor: RED + "50", flex: 1 }]}
+                    onPress={() => { setRecordingUri(null); setRecordingName(null); setRecordingMs(0); }}
+                    disabled={uploading}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="trash-outline" size={15} color={RED} />
+                    <Text style={[s.recBtnSmallText, { color: RED }]}>Hapus</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
             )}
           </View>
 
           {/* ── Foto CDB ── */}
-          <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
-            <View style={s.cardRow}>
-              <View style={[s.iconBox, { backgroundColor: C.cdbBg }]}>
-                <Ionicons name="camera" size={18} color={C.accentDrive} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.cardTitle, { color: C.textPrimary }]}>Foto CDB</Text>
-                <Text style={[s.cardSub, { color: C.textMuted }]}>
-                  {cdbPhoto ? cdbPhotoName ?? "Foto dipilih" : "Belum ada foto"}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[s.driveBadge, { backgroundColor: C.primary }]}
-                onPress={cdbPhoto ? () => setCdbPreviewVisible(true) : pickCdbPhoto}
-                activeOpacity={0.8}
-              >
-                <Text style={[s.driveBadgeText, { color: C.primaryFg }]}>
-                  {cdbPhoto ? "Lihat" : "Ambil"}
-                </Text>
-              </TouchableOpacity>
+          <View style={[s.card, { backgroundColor: C.surface, borderColor: cdbPhoto ? GREEN + "cc" : getBorder(isDark) }]}>
+            <View style={s.cardHeaderRow}>
+              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>Foto CDB</Text>
               {cdbPhoto && (
-                <TouchableOpacity
-                  style={[s.driveBadge, { backgroundColor: C.deleteBtn, marginLeft: 6 }]}
-                  onPress={() => { setCdbPhoto(null); setCdbPhotoName(null); }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[s.driveBadgeText, { color: C.accentRecord }]}>Hapus</Text>
-                </TouchableOpacity>
+                <View style={[s.siapBadge, { backgroundColor: GREEN + "22" }]}>
+                  <Ionicons name="checkmark-circle" size={13} color={GREEN} />
+                  <Text style={[s.siapText, { color: GREEN }]}>Siap</Text>
+                </View>
               )}
             </View>
+
+            {cdbPhoto ? (
+              <>
+                <View style={[s.cdbReadyRow, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
+                  <View style={[s.iconBox, { backgroundColor: C.cdbBg }]}>
+                    <Ionicons name="image" size={18} color={C.accentDrive} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.cardTitle, { color: C.textPrimary }]}>Foto dipilih</Text>
+                    <Text style={[s.cardSub, { color: C.textMuted }]} numberOfLines={1}>
+                      {cdbPhotoName ?? "foto.jpg"}
+                    </Text>
+                  </View>
+                </View>
+                <View style={s.recBtnRow}>
+                  <TouchableOpacity
+                    style={[s.recBtnSmall, { backgroundColor: C.surface, borderColor: getBorder(isDark), flex: 1 }]}
+                    onPress={() => setCdbPreviewVisible(true)}
+                    disabled={uploading}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="eye-outline" size={15} color={C.textSecondary} />
+                    <Text style={[s.recBtnSmallText, { color: C.textSecondary }]}>Lihat</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.recBtnSmall, { backgroundColor: RED + "15", borderColor: RED + "50", flex: 1 }]}
+                    onPress={() => { setCdbPhoto(null); setCdbPhotoName(null); }}
+                    disabled={uploading}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="trash-outline" size={15} color={RED} />
+                    <Text style={[s.recBtnSmallText, { color: RED }]}>Hapus</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <TouchableOpacity
+                style={[s.recBtn, { backgroundColor: C.accentDrive + "dd" }]}
+                onPress={pickCdbPhoto}
+                disabled={uploading}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="camera" size={20} color="#FFF" />
+                <Text style={s.recBtnText}>Ambil Foto</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* ── Poin Verifikasi Wajib — 2 kolom compact ── */}
-          <View style={[s.card, { backgroundColor: C.verifikasiBg, borderColor: C.border, paddingVertical: 10 }]}>
+          <View style={[s.card, { backgroundColor: C.verifikasiBg, borderColor: getBorder(isDark), paddingVertical: 10 }]}>
             <View style={[s.cardRow, { marginBottom: 4 }]}>
               <Ionicons name="shield-checkmark" size={14} color={C.verifikasiText} />
               <Text style={[s.veriTitle, { color: C.verifikasiText }]}>Verifikasi Data Konsumen</Text>
@@ -830,10 +870,10 @@ export default function Index() {
           </TouchableOpacity>
 
           {!canUpload && (
-            <View style={[s.hintBox, { backgroundColor: C.surface, borderColor: C.border }]}>
+            <View style={[s.hintBox, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
               {!driveConnected && <Text style={[s.hintItem, { color: C.textMuted }]}>• Hubungkan Google Drive terlebih dahulu</Text>}
               {!namaKonsumen.trim() && <Text style={[s.hintItem, { color: C.textMuted }]}>• Isi nama konsumen</Text>}
-              {!mesinValid && <Text style={[s.hintItem, { color: C.textMuted }]}>• Nomor mesin harus 13 karakter</Text>}
+              {!mesinValid && <Text style={[s.hintItem, { color: C.textMuted }]}>• Nomor mesin harus 12 karakter</Text>}
               {!recordingUri && <Text style={[s.hintItem, { color: C.textMuted }]}>• Rekam audio terlebih dahulu</Text>}
             </View>
           )}
@@ -855,8 +895,8 @@ export default function Index() {
         </TouchableOpacity>
       </Modal>
 
-      <LoadingOverlay visible={uploading} label={uploadLabel} progress={uploadProgress} C={C} />
-      <WhatsNewModal visible={whatsNewVisible} onClose={closeWhatsNew} C={C} />
+      <LoadingOverlay visible={uploading} label={uploadLabel} progress={uploadProgress} C={C} isDark={isDark} />
+      <WhatsNewModal visible={whatsNewVisible} onClose={closeWhatsNew} C={C} isDark={isDark} />
     </SafeAreaView>
   );
 }
@@ -869,13 +909,13 @@ const s = StyleSheet.create({
   },
   navLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   navLogo: { width: 32, height: 32, borderRadius: 8 },
-  navTitle: { fontSize: 13, fontWeight: "900", letterSpacing: 0.5 },
-  navSub: { fontSize: 9, fontWeight: "600" },
+  navTitle: { fontSize: 14, fontWeight: "900", letterSpacing: 0.5 },
+  navSub: { fontSize: 12, fontWeight: "600" },
   navRight: { flexDirection: "row", alignItems: "center", gap: 5 },
   // Icon lebih besar (38x38), border lebih tebal (1.5)
   navBtn: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1.5 },
   content: { padding: 12, gap: 10, paddingBottom: 24 },
-  card: { borderRadius: 16, borderWidth: 1, padding: 14, gap: 8 },
+  card: { borderRadius: 16, borderWidth: 1.5, padding: 14, gap: 8 },
   cardRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   iconBox: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   cardTitle: { fontSize: 13, fontWeight: "800" },
@@ -884,22 +924,34 @@ const s = StyleSheet.create({
   driveBadgeText: { fontSize: 12, fontWeight: "700" },
   sectionTitle: { fontSize: 13, fontWeight: "800" },
   label: { fontSize: 10, fontWeight: "700", letterSpacing: 1.1, marginTop: 4 },
-  input: { height: 46, borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 13, fontSize: 14, fontWeight: "600" },
+  input: { height: 46, borderWidth: 2, borderRadius: 12, paddingHorizontal: 13, fontSize: 14, fontWeight: "600" },
   mesinLabelRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
-  mesinBadge: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, borderWidth: 1 },
+  mesinBadge: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, borderWidth: 1.5 },
   mesinBadgeText: { fontSize: 10, fontWeight: "700" },
   recTimer: { fontSize: 32, fontWeight: "900", textAlign: "center", letterSpacing: 2, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" },
   recBtnRow: { flexDirection: "row", gap: 8 },
   recBtn: { height: 48, borderRadius: 13, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   recBtnText: { color: "#FFF", fontWeight: "700", fontSize: 14 },
+  recBtnSmall: { height: 36, borderRadius: 10, borderWidth: 1.5, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
+  recBtnSmallText: { fontWeight: "700", fontSize: 12 },
   veriTitle: { fontSize: 12, fontWeight: "800" },
   veriGrid: { flexDirection: "row", flexWrap: "wrap", gap: 4 },
   veriItem: { flexDirection: "row", alignItems: "center", gap: 5, width: "48%" },
   veriDot: { width: 4, height: 4, borderRadius: 2 },
   veriText: { fontSize: 11, lineHeight: 18, flex: 1 },
+  cardHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 2 },
+  siapBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  siapText: { fontSize: 11, fontWeight: "700" },
+  orDivider: { flexDirection: "row", alignItems: "center", gap: 8, marginVertical: 2 },
+  orLine: { flex: 1, height: 1 },
+  orText: { fontSize: 11, fontWeight: "600" },
+  browseHint: { fontSize: 10, fontWeight: "500", textAlign: "center", marginTop: 2 },
+  cdbReadyRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5 },
+  cdbSiapBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  cdbSiapText: { fontSize: 11, fontWeight: "700" },
   uploadBtn: { height: 52, borderRadius: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   uploadBtnText: { fontSize: 15, fontWeight: "800" },
-  hintBox: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 4 },
+  hintBox: { borderRadius: 12, borderWidth: 1.5, padding: 12, gap: 4 },
   hintItem: { fontSize: 12 },
   previewBackdrop: { flex: 1, alignItems: "center", justifyContent: "center" },
   previewImage: { width: "92%", height: "70%", borderRadius: 12 },

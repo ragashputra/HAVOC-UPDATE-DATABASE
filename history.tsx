@@ -13,6 +13,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth, APP_BACKEND_URL, authFetch } from "../lib/auth";
 import { useTheme } from "../lib/theme";
 
+// Border tegas adaptive — dark: putih 30%, light: hitam 22%
+function getBorder(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.22)";
+}
+
 function formatDate(iso) {
   try {
     const d = new Date(iso);
@@ -33,10 +38,10 @@ function isPhoto(item) {
   return ["jpg", "jpeg", "png", "webp", "heic"].includes(ext);
 }
 
-function ItemCard({ item, C, onDelete, deletingId }) {
+function ItemCard({ item, C, isDark, onDelete, deletingId }) {
   const photo = isPhoto(item);
   return (
-    <View style={[ic.card, { backgroundColor: C.surface, borderColor: C.border }]}>
+    <View style={[ic.card, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
       <View style={[ic.typeIcon, { backgroundColor: photo ? C.cdbBg : C.verifikasiBg }]}>
         <Ionicons name={photo ? "image" : "mic"} size={18} color={photo ? C.accentDrive : C.accentRecord} />
       </View>
@@ -62,7 +67,7 @@ function ItemCard({ item, C, onDelete, deletingId }) {
       <TouchableOpacity
         onPress={() => onDelete(item)}
         disabled={deletingId === item.id}
-        style={[ic.trash, { borderColor: C.border, backgroundColor: C.deleteBtn }]}
+        style={[ic.trash, { borderColor: getBorder(isDark), backgroundColor: C.deleteBtn }]}
       >
         {deletingId === item.id
           ? <ActivityIndicator size="small" color={C.accentRecord} />
@@ -89,7 +94,8 @@ const ic = StyleSheet.create({
 
 export default function HistoryScreen() {
   const { token } = useAuth();
-  const { C } = useTheme();
+  const { C, mode } = useTheme();
+  const isDark = mode === "dark";
   const router = useRouter();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -151,8 +157,8 @@ export default function HistoryScreen() {
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
       {/* Header */}
-      <View style={[s.header, { borderBottomColor: C.border, backgroundColor: C.headerBg }]}>
-        <TouchableOpacity onPress={() => router.back()} style={[s.iconBtn, { borderColor: C.border }]}>
+      <View style={[s.header, { borderBottomColor: getBorder(isDark), backgroundColor: C.headerBg }]}>
+        <TouchableOpacity onPress={() => router.back()} style={[s.iconBtn, { borderColor: getBorder(isDark) }]}>
           <Ionicons name="chevron-back" size={18} color={C.textPrimary} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -166,10 +172,10 @@ export default function HistoryScreen() {
       </View>
 
       {/* Search Bar — clearButtonMode dihapus, pakai tombol X manual saja */}
-      <View style={[s.searchContainer, { backgroundColor: C.bg, borderBottomColor: C.border }]}>
+      <View style={[s.searchContainer, { backgroundColor: C.bg, borderBottomColor: getBorder(isDark) }]}>
         <View style={[
           s.searchBar,
-          { backgroundColor: C.surface, borderColor: searchFocused ? C.primary : C.border }
+          { backgroundColor: C.surface, borderColor: searchFocused ? C.primary : getBorder(isDark) }
         ]}>
           <Ionicons name="search" size={16} color={C.textMuted} style={{ marginLeft: 10 }} />
           <TextInput
@@ -228,6 +234,7 @@ export default function HistoryScreen() {
               <ItemCard
                 item={item}
                 C={C}
+                isDark={isDark}
                 onDelete={onDelete}
                 deletingId={deletingId}
               />

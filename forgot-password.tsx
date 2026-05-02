@@ -13,9 +13,16 @@ import { Ionicons } from "@expo/vector-icons";
 import { APP_BACKEND_URL } from "../lib/auth";
 import { useTheme } from "../lib/theme";
 
+// Border tegas adaptive — dark: putih 30%, light: hitam 22%
+function getBorder(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.22)";
+}
+
+
 export default function ForgotPasswordScreen() {
   const router = useRouter();
-  const { C } = useTheme();
+  const { C, mode } = useTheme();
+  const isDark = mode === "dark";
   const [step, setStep] = useState("form");
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
@@ -56,7 +63,7 @@ export default function ForgotPasswordScreen() {
           <Text style={[s.successDesc, { color: C.textSecondary }]}>
             Password sudah berhasil diubah. Kode recovery lama sudah hangus — generate kode baru di Profil setelah login.
           </Text>
-          <View style={[s.infoBox, { backgroundColor: C.surface, borderColor: C.border }]}>
+          <View style={[s.infoBox, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
             <Ionicons name="information-circle" size={16} color={C.accentWarning} />
             <Text style={[s.infoText, { color: C.textSecondary }]}>
               Setelah login, segera generate kode recovery baru dan screenshot.
@@ -80,15 +87,15 @@ export default function ForgotPasswordScreen() {
         <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
           {/* Image: replace require() with actual import in your Expo project */}
-          {/* <Image source={require("../assets/images/icon.png")} style={[s.logo, { borderColor: C.border }]} resizeMode="contain" /> */}
+          {/* <Image source={require("../assets/images/icon.png")} style={[s.logo, { borderColor: getBorder(isDark) }]} resizeMode="contain" /> */}
           <Text style={[s.brand, { color: C.textPrimary }]}>Honda Visual On-site Capture</Text>
           <Text style={[s.brandSub, { color: C.textSecondary }]}>PT Capella Dinamik Nusantara</Text>
 
-          <View style={[s.card, { backgroundColor: C.surface, borderColor: C.border }]}>
+          <View style={[s.card, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
             <Text style={[s.title, { color: C.textPrimary }]}>Reset Password</Text>
             <Text style={[s.sub, { color: C.textSecondary }]}>Masukkan email, kode recovery, dan password baru.</Text>
 
-            <View style={[s.infoBox, { backgroundColor: C.surface, borderColor: C.border }]}>
+            <View style={[s.infoBox, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
               <Ionicons name="key" size={14} color={C.accentWarning} />
               <Text style={[s.infoText, { color: C.textSecondary }]}>
                 Kode recovery di-generate di menu Profil setelah login.
@@ -97,7 +104,7 @@ export default function ForgotPasswordScreen() {
 
             <Text style={[s.label, { color: C.textMuted }]}>EMAIL TERDAFTAR</Text>
             <TextInput
-              style={[s.input, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
+              style={[s.input, { backgroundColor: C.inputBg, borderColor: getBorder(isDark), color: C.textPrimary }]}
               value={email}
               onChangeText={setEmail}
               placeholder="emailanda@gmail.com"
@@ -109,7 +116,7 @@ export default function ForgotPasswordScreen() {
 
             <Text style={[s.label, { color: C.textMuted }]}>KODE RECOVERY (6 KARAKTER)</Text>
             <TextInput
-              style={[s.input, s.tokenInput, { backgroundColor: C.inputBg, borderColor: C.border, color: C.textPrimary }]}
+              style={[s.input, s.tokenInput, { backgroundColor: C.inputBg, borderColor: getBorder(isDark), color: C.textPrimary }]}
               value={token}
               onChangeText={(t) => setToken(t.toUpperCase())}
               placeholder="••••••"
@@ -121,7 +128,7 @@ export default function ForgotPasswordScreen() {
             <Text style={[s.hint, { color: C.textMuted }]}>Lihat dari screenshot kode saat generate.</Text>
 
             <Text style={[s.label, { color: C.textMuted }]}>PASSWORD BARU</Text>
-            <View style={[s.pwdRow, { backgroundColor: C.inputBg, borderColor: C.border }]}>
+            <View style={[s.pwdRow, { backgroundColor: C.inputBg, borderColor: getBorder(isDark) }]}>
               <TextInput
                 style={[s.pwdInput, { color: C.textPrimary }]}
                 value={newPassword}
@@ -137,7 +144,7 @@ export default function ForgotPasswordScreen() {
             </View>
 
             <Text style={[s.label, { color: C.textMuted }]}>KONFIRMASI PASSWORD BARU</Text>
-            <View style={[s.pwdRow, { backgroundColor: C.inputBg, borderColor: C.border }]}>
+            <View style={[s.pwdRow, { backgroundColor: C.inputBg, borderColor: getBorder(isDark) }]}>
               <TextInput
                 style={[s.pwdInput, { color: C.textPrimary }]}
                 value={confirmPassword}
@@ -185,16 +192,16 @@ const s = StyleSheet.create({
   logo: { width: 80, height: 80, marginTop: 16, borderRadius: 20, borderWidth: 1 },
   brand: { fontSize: 14, fontWeight: "800", marginTop: 12, textAlign: "center" },
   brandSub: { fontSize: 11, marginBottom: 24, textAlign: "center" },
-  card: { width: "100%", borderRadius: 20, borderWidth: 1, padding: 20, gap: 4 },
+  card: { width: "100%", borderRadius: 20, borderWidth: 1.5, padding: 20, gap: 4 },
   title: { fontSize: 20, fontWeight: "800" },
   sub: { fontSize: 12, marginBottom: 4 },
-  infoBox: { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 10, borderRadius: 10, borderWidth: 1 },
+  infoBox: { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 10, borderRadius: 10, borderWidth: 1.5 },
   infoText: { flex: 1, fontSize: 11, lineHeight: 16 },
   label: { fontSize: 10, fontWeight: "700", letterSpacing: 1.2, marginBottom: 5, marginTop: 10 },
-  input: { height: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, fontWeight: "500" },
+  input: { height: 48, borderWidth: 2, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, fontWeight: "500" },
   tokenInput: { fontSize: 20, fontWeight: "800", letterSpacing: 6, textAlign: "center", fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" },
   hint: { fontSize: 11, marginTop: 3 },
-  pwdRow: { flexDirection: "row", alignItems: "center", height: 48, borderWidth: 1, borderRadius: 12, overflow: "hidden" },
+  pwdRow: { flexDirection: "row", alignItems: "center", height: 48, borderWidth: 2, borderRadius: 12, overflow: "hidden" },
   pwdInput: { flex: 1, height: 48, paddingHorizontal: 14, fontSize: 15, fontWeight: "500" },
   eyeBtn: { width: 46, height: 48, alignItems: "center", justifyContent: "center" },
   btnPrimary: { height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, marginTop: 14 },
