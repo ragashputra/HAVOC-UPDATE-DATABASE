@@ -625,6 +625,13 @@ async def shutdown_db_client():
     client.close()
 
 
+# ============ App Version ============
+APP_VERSION = "3.0.1"
+
+@api_router.get("/app/version")
+async def get_app_version():
+    return { "version": APP_VERSION }
+
 app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
