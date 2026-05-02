@@ -126,10 +126,10 @@ const wn = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)", alignItems: "center", justifyContent: "center", padding: 28 },
   card: { width: "100%", maxWidth: 340, borderRadius: 20, borderWidth: 1.5, padding: 20, alignItems: "flex-start", gap: 4 },
   iconRow: { flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start" },
-  title: { fontSize: 16, fontWeight: "900" },
+  title: { fontSize: 18, fontWeight: "900" },
   itemRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   dot: { width: 5, height: 5, borderRadius: 3 },
-  itemText: { fontSize: 12, lineHeight: 18, flex: 1 },
+  itemText: { fontSize: 14, lineHeight: 20, flex: 1 },
   btn: { marginTop: 14, width: "100%", height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   btnText: { fontSize: 14, fontWeight: "700" },
 });
@@ -561,8 +561,8 @@ export default function Index() {
         <View style={s.navLeft}>
           {/* <Image source={require("../assets/images/icon.png")} style={s.navLogo} resizeMode="contain" /> */}
           <View>
-            <Text style={[s.navTitle, { color: C.textPrimary }]}>Honda Visual On-site Capture</Text>
-            <Text style={[s.navSub, { color: C.textMuted }]}>PT Capella Dinamik Nusantara</Text>
+            <Text style={[s.navTitle, { color: C.textPrimary }]}>HAVOC</Text>
+            <Text style={[s.navSub, { color: isDark ? "#CBD5E1" : "#475569" }]}>PT Capella Dinamik Nusantara</Text>
           </View>
         </View>
         {/* Icon lebih besar, border lebih tebal */}
@@ -620,21 +620,33 @@ export default function Index() {
                   </Text>
                 }
               </View>
-              {!checkingStatus && (
+              <View style={s.driveBtnRow}>
                 <TouchableOpacity
-                  style={[s.driveBadge, { backgroundColor: driveConnected ? RED + "18" : GREEN + "22", borderWidth: 1.5, borderColor: driveConnected ? RED + "99" : GREEN + "99" }]}
-                  onPress={driveConnected ? handleDisconnectDrive : handleConnectDrive}
-                  disabled={connecting}
-                  activeOpacity={0.8}
+                  style={[s.driveCekBtn, { borderColor: "#3B82F6", backgroundColor: "rgba(59,130,246,0.10)" }]}
+                  onPress={refreshDriveStatus}
+                  disabled={checkingStatus}
+                  activeOpacity={0.7}
                 >
-                  {connecting
-                    ? <ActivityIndicator size="small" color={driveConnected ? RED : GREEN} />
-                    : <Text style={[s.driveBadgeText, { color: driveConnected ? RED : GREEN }]}>
-                      {driveConnected ? "Putus" : "Hubungkan"}
-                    </Text>
-                  }
+                  {checkingStatus
+                    ? <ActivityIndicator size="small" color="#3B82F6" />
+                    : <Ionicons name="reload" size={15} color="#3B82F6" />}
                 </TouchableOpacity>
-              )}
+                {!checkingStatus && (
+                  <TouchableOpacity
+                    style={[s.driveBadge, { backgroundColor: driveConnected ? RED + "18" : GREEN + "22", borderColor: driveConnected ? RED + "99" : GREEN + "99" }]}
+                    onPress={driveConnected ? handleDisconnectDrive : handleConnectDrive}
+                    disabled={connecting}
+                    activeOpacity={0.8}
+                  >
+                    {connecting
+                      ? <ActivityIndicator size="small" color={driveConnected ? RED : GREEN} />
+                      : <Text style={[s.driveBadgeText, { color: driveConnected ? RED : GREEN }]}>
+                        {driveConnected ? "Putus" : "Hubungkan"}
+                      </Text>
+                    }
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           </View>
 
@@ -854,7 +866,7 @@ export default function Index() {
           <View style={[s.card, { backgroundColor: C.verifikasiBg, borderColor: getBorder(isDark), paddingVertical: 10 }]}>
             <View style={[s.cardRow, { marginBottom: 4 }]}>
               <Ionicons name="shield-checkmark" size={14} color={C.verifikasiText} />
-              <Text style={[s.veriTitle, { color: C.verifikasiText }]}>Verifikasi Data Konsumen</Text>
+              <Text style={[s.veriTitle, { color: C.verifikasiText }]}>Verifikasi Wajib Data Konsumen</Text>
             </View>
             <View style={s.veriGrid}>
               {verifikasiItems.map((item, i) => (
@@ -930,7 +942,9 @@ const s = StyleSheet.create({
   iconBox: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   cardTitle: { fontSize: 13, fontWeight: "800" },
   cardSub: { fontSize: 11, fontWeight: "500", marginTop: 1 },
-  driveBadge: { paddingHorizontal: 11, paddingVertical: 7, borderRadius: 10 },
+  driveBadge: { height: 34, paddingHorizontal: 11, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 2 },
+  driveBtnRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  driveCekBtn: { width: 34, height: 34, borderRadius: 9, alignItems: "center", justifyContent: "center", borderWidth: 2 },
   driveBadgeText: { fontSize: 12, fontWeight: "700" },
   sectionTitle: { fontSize: 13, fontWeight: "800" },
   label: { fontSize: 10, fontWeight: "700", letterSpacing: 1.1, marginTop: 4 },
@@ -944,11 +958,11 @@ const s = StyleSheet.create({
   recBtnText: { color: "#FFF", fontWeight: "700", fontSize: 14 },
   recBtnSmall: { height: 36, borderRadius: 10, borderWidth: 1.5, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
   recBtnSmallText: { fontWeight: "700", fontSize: 12 },
-  veriTitle: { fontSize: 12, fontWeight: "800" },
+  veriTitle: { fontSize: 14, fontWeight: "800" },
   veriGrid: { flexDirection: "row", flexWrap: "wrap", gap: 4 },
   veriItem: { flexDirection: "row", alignItems: "center", gap: 5, width: "48%" },
   veriDot: { width: 4, height: 4, borderRadius: 2 },
-  veriText: { fontSize: 11, lineHeight: 18, flex: 1 },
+  veriText: { fontSize: 13, lineHeight: 18, flex: 1 },
   cardHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 2 },
   siapBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   siapText: { fontSize: 11, fontWeight: "700" },
@@ -962,7 +976,7 @@ const s = StyleSheet.create({
   uploadBtn: { height: 52, borderRadius: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   uploadBtnText: { fontSize: 15, fontWeight: "800" },
   hintBox: { borderRadius: 12, borderWidth: 1.5, padding: 12, gap: 4 },
-  hintItem: { fontSize: 12 },
+  hintItem: { fontSize: 14 },
   previewBackdrop: { flex: 1, alignItems: "center", justifyContent: "center" },
   previewImage: { width: "92%", height: "70%", borderRadius: 12 },
 });

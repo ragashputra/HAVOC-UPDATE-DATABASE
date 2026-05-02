@@ -4,7 +4,7 @@
 // ============================================================
 import React, { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Image,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -51,11 +51,8 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-
-          {/* Image: replace require() with actual import in your Expo project */}
-          {/* <Image source={require("../assets/images/icon.png")} style={[s.logo, { borderColor: getBorder(isDark) }]} resizeMode="contain" /> */}
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
           <Text style={[s.brand, { color: C.textPrimary }]}>Honda Visual On-site Capture</Text>
           <Text style={[s.brandSub, { color: C.textSecondary }]}>PT Capella Dinamik Nusantara</Text>
 
@@ -130,12 +127,11 @@ export default function LoginScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1 },
   content: { padding: 24, alignItems: "center", paddingBottom: 40 },
-  logo: { width: 88, height: 88, marginTop: 20, borderRadius: 22, borderWidth: 1 },
-  brand: { fontSize: 15, fontWeight: "800", marginTop: 12, textAlign: "center" },
-  brandSub: { fontSize: 11, fontWeight: "500", marginBottom: 28, textAlign: "center" },
+  brand: { fontSize: 24, fontWeight: "800", marginTop: 6, textAlign: "center" },
+  brandSub: { fontSize: 16, fontWeight: "500", marginBottom: 28, textAlign: "center" },
   card: { width: "100%", borderRadius: 20, borderWidth: 1.5, padding: 22, gap: 4 },
-  title: { fontSize: 24, fontWeight: "800", marginBottom: 2 },
-  sub: { fontSize: 12, marginBottom: 16 },
+  title: { fontSize: 26, fontWeight: "800", marginBottom: 2 },
+  sub: { fontSize: 16, marginBottom: 16 },
   label: { fontSize: 10, fontWeight: "700", letterSpacing: 1.2, marginBottom: 6, marginTop: 8 },
   input: { height: 48, borderWidth: 2, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, fontWeight: "500" },
   pwdRow: { flexDirection: "row", alignItems: "center", height: 48, borderWidth: 2, borderRadius: 12, overflow: "hidden" },

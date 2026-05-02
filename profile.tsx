@@ -106,8 +106,8 @@ export default function ProfileScreen() {
           <View style={{ flex: 1 }}>
             <Text style={[s.infoName, { color: C.textPrimary }]}>{user?.nama_lengkap}</Text>
             <Text style={[s.infoEmail, { color: C.textSecondary }]}>{user?.email}</Text>
-            <View style={[s.roleBadge, { backgroundColor: C.stripBg }]}>
-              <Text style={[s.roleText, { color: C.textSecondary }]}>{user?.role?.toUpperCase() ?? "USER"}</Text>
+            <View style={[s.roleBadge, { backgroundColor: "#2563eb18", borderColor: "#2563eb60", borderWidth: 1 }]}>
+              <Text style={[s.roleText, { color: "#2563eb" }]}>{user?.role?.toUpperCase() ?? "USER"}</Text>
             </View>
           </View>
         </View>
@@ -260,8 +260,8 @@ const s = StyleSheet.create({
   avatarText: { fontSize: 20, fontWeight: "800" },
   infoName: { fontSize: 14, fontWeight: "800" },
   infoEmail: { fontSize: 11, marginTop: 1 },
-  roleBadge: { marginTop: 5, alignSelf: "flex-start", paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
-  roleText: { fontSize: 10, fontWeight: "700" },
+  roleBadge: { marginTop: 5, alignSelf: "flex-start", paddingHorizontal: 9, paddingVertical: 3, borderRadius: 8 },
+  roleText: { fontSize: 11, fontWeight: "800", letterSpacing: 0.5 },
   card: { borderRadius: 16, borderWidth: 1.5, padding: 14, gap: 8 },
   cardRow: { flexDirection: "row", alignItems: "center", gap: 7 },
   cardTitle: { fontSize: 13, fontWeight: "800" },
