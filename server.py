@@ -184,8 +184,7 @@ async def update_profile(body: UpdateProfileReq, user: dict = Depends(get_curren
         {"$set": set_data},
     )
     fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0})
-    fresh2 = await db.users.find_one({"id": user["id"]})
-    return _build_user_out(fresh2 or {**user, "nama_lengkap": new_name})
+    return _build_user_out(fresh or {**user, "nama_lengkap": new_name})
 
 
 @api_router.put("/auth/drive-folder", response_model=UserOut)
@@ -296,15 +295,24 @@ async def _get_drive_service(user_id: str):
         scopes=creds_doc.get("scopes"),
     )
     if creds.expired and creds.refresh_token:
-        creds.refresh(GoogleRequest())
-        await db.drive_credentials.update_one(
-            {"user_id": user_id},
-            {"$set": {
-                "access_token": creds.token,
-                "expiry": creds.expiry.isoformat() if creds.expiry else None,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }},
-        )
+        try:
+            creds.refresh(GoogleRequest())
+            await db.drive_credentials.update_one(
+                {"user_id": user_id},
+                {"$set": {
+                    "access_token": creds.token,
+                    "expiry": creds.expiry.isoformat() if creds.expiry else None,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+        except Exception as e:
+            logger.error(f"Token refresh failed for user {user_id}: {e}")
+            # Hapus credentials yang sudah tidak valid agar user bisa reconnect
+            await db.drive_credentials.delete_one({"user_id": user_id})
+            raise HTTPException(
+                status_code=401,
+                detail="Akses Google Drive kamu telah kedaluwarsa atau dicabut. Silakan hubungkan ulang Drive kamu."
+            )
     return build('drive', 'v3', credentials=creds, cache_discovery=False)
 
 def _extract_folder_id(value: str) -> str:
@@ -327,6 +335,12 @@ def _extract_folder_id(value: str) -> str:
 
 def _sanitize_filename(name: str) -> str:
     name = (name or "").strip()
+    name = re.sub(r"[\\/:*?\"<>|\r\n\t]+", "_", name)
+    return name or "rekaman"
+
+def _sanitize_mesin(name: str) -> str:
+    """Nomor mesin: hapus semua spasi, uppercase."""
+    name = (name or "").strip().replace(" ", "").upper()
     name = re.sub(r"[\\/:*?\"<>|\r\n\t]+", "_", name)
     return name or "rekaman"
 
@@ -388,10 +402,13 @@ async def drive_callback(code: str = Query(...), state: str = Query(...)):
             scopes=None,
             redirect_uri=GOOGLE_DRIVE_REDIRECT_URI,
         )
-        if code_verifier:
-            flow.fetch_token(code=code, code_verifier=code_verifier)
-        else:
-            flow.fetch_token(code=code)
+        if not code_verifier:
+            logger.error(f"OAuth verifier not found for user {state}")
+            return HTMLResponse(
+                content=f"<h2>Sesi OAuth Tidak Valid</h2><p>Sesi koneksi Drive sudah kedaluwarsa. Silakan kembali ke aplikasi dan coba hubungkan Drive lagi.</p><a href='{FRONTEND_URL}'>Kembali</a>",
+                status_code=400,
+            )
+        flow.fetch_token(code=code, code_verifier=code_verifier)
         # Hapus verifier setelah dipakai
         await db.oauth_verifiers.delete_one({"user_id": state})
         creds = flow.credentials
@@ -426,20 +443,24 @@ async def drive_callback(code: str = Query(...), state: str = Query(...)):
             </div></body></html>
             """, status_code=400)
 
+        creds_set_data = {
+            "user_id": state,
+            "access_token": creds.token,
+            "token_uri": creds.token_uri,
+            "client_id": creds.client_id,
+            "client_secret": creds.client_secret,
+            "scopes": list(creds.scopes) if creds.scopes else [],
+            "expiry": creds.expiry.isoformat() if creds.expiry else None,
+            "email": user_email,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        # Hanya timpa refresh_token kalau Google mengirim yang baru (tidak None)
+        # Google hanya kirim refresh_token saat consent pertama atau setelah revoke
+        if creds.refresh_token:
+            creds_set_data["refresh_token"] = creds.refresh_token
         await db.drive_credentials.update_one(
             {"user_id": state},
-            {"$set": {
-                "user_id": state,
-                "access_token": creds.token,
-                "refresh_token": creds.refresh_token,
-                "token_uri": creds.token_uri,
-                "client_id": creds.client_id,
-                "client_secret": creds.client_secret,
-                "scopes": creds.scopes,
-                "expiry": creds.expiry.isoformat() if creds.expiry else None,
-                "email": user_email,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }},
+            {"$set": creds_set_data},
             upsert=True,
         )
 
@@ -480,6 +501,7 @@ async def drive_disconnect(user: dict = Depends(get_current_user)):
     return {"success": True}
 
 @api_router.post("/drive/upload")
+@api_router.post("/upload")
 async def drive_upload(
     nama_konsumen: str = Form(...),
     nomor_mesin: str = Form(...),
@@ -498,7 +520,10 @@ async def drive_upload(
     root_folder = (user.get("drive_folder_id") or "").strip() or DRIVE_FOLDER_ID
 
     # Buat atau cari subfolder dengan nama nomor mesin
-    safe_mesin = _sanitize_filename(nomor_mesin.strip())
+    # Format nomor mesin dengan spasi: "JMH2E 1234567"
+    mesin_clean = nomor_mesin.strip().replace(" ", "").upper()
+    mesin_formatted = (mesin_clean[:5] + " " + mesin_clean[5:]).strip() if len(mesin_clean) > 5 else mesin_clean
+    safe_mesin = _sanitize_filename(mesin_formatted)
     subfolder_id = None
     try:
         # Cari subfolder yang sudah ada
@@ -556,7 +581,7 @@ async def drive_upload(
         "user_email": user["email"],
         "user_name": user["nama_lengkap"],
         "nama_konsumen": nama_konsumen.strip(),
-        "nomor_mesin": nomor_mesin.strip(),
+        "nomor_mesin": mesin_formatted,
         "file_name": final_name,
         "file_type": file_type,
         "drive_file_id": created.get("id"),
@@ -618,6 +643,8 @@ async def on_startup():
     await db.users.create_index("email", unique=True)
     await db.drive_credentials.create_index("user_id", unique=True)
     await db.upload_logs.create_index("user_id")
+    # TTL index: oauth_verifiers otomatis dihapus setelah 10 menit
+    await db.oauth_verifiers.create_index("created_at", expireAfterSeconds=600)
     await seed_admin()
 
 @app.on_event("shutdown")

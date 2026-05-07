@@ -2,10 +2,10 @@
 // tentang.tsx — UPDATED v2.3.0
 // UI: minimalis compact, timeline pill horizontal changelog
 // ============================================================
-import React, { useState, useRef } from "react";
+import React, { useState, memo } from "react";
 import {
   View, Text, StyleSheet, ScrollView, Image,
-  TouchableOpacity, ActivityIndicator, Alert,
+  TouchableOpacity, ActivityIndicator, Alert, Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -16,9 +16,13 @@ function getBorder(isDark: boolean) {
   return isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.22)";
 }
 
+// Warna label yang lebih kontras — dark: putih 75%, light: hitam 60%
+function getLabelColor(isDark: boolean) {
+  return isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.60)";
+}
+
 const APP_VERSION = "3.0.1";
 const GREEN = "#16a34a";
-const LOGO = require("../assets/images/logo.png");
 
 // ─── Changelog data — tambah entri baru di paling atas ───────
 const CHANGELOG: { version: string; date: string; items: string[] }[] = [
@@ -26,62 +30,63 @@ const CHANGELOG: { version: string; date: string; items: string[] }[] = [
     version: "3.0.1",
     date: "Mei 2026",
     items: [
-      "Tampilan UI minimalis terbaru di seluruh halaman",
-      "Scrolling lebih halus dengan efek animasi yang diperbarui",
-      "Tombol pencairan tersedia langsung di riwayat transaksi",
-      "Browse & pilih audio dan gambar langsung dari perangkat",
-      "Perbaikan bug dan pembaruan minor lainnya",
+      "Simple User Interface (UI)",
+      "Scrolling Lebih Smooth dengan Efek Transisi Animasi Halus",
+      "Notifikasi Popup Skip Upload File Audio/Foto CDB",
+      "Tombol Pencarian Pada Menu Riwayat",
+      "Browse File Audio dan Gambar",
+      "Perbaikan Bug dan Pembaruan Minor Lainnya",
     ],
   },
   {
     version: "2.3.0",
     date: "Mei 2026",
     items: [
-      "Nama aplikasi: Honda Visual On-site Capture",
-      "Nomor mesin 12 karakter dengan indikator hijau/merah",
-      "Waveform & timer rekam warna hijau",
-      "Ikon Drive glowing hijau/merah",
-      "Poin verifikasi konsumen diperbarui (8 item)",
-      "Playback seek bar diperbaiki",
-      "Icon navbar lebih besar, border lebih tebal",
+      "Nama Aplikasi: Honda Visual On-site Capture",
+      "Nomor Mesin Wajib 12 Karakter",
+      "Peningkatan Efek Waveform",
+      "Peningkatan Visual UI",
+      "Poin Verifikasi Konsumen Diperbarui (8 item)",
+      "Playback Seek Bar Diperbaiki",
+      "Perbaikan Bug Minor",
     ],
   },
   {
     version: "2.2.0",
     date: "Apr 2026",
     items: [
-      "Integrasi Google Drive API langsung dari aplikasi",
-      "Upload audio & foto dalam satu sesi",
-      "Dark mode sebagai tema default",
-      "Animasi loading overlay baru",
-    ],
-  },
-  {
-    version: "2.1.0",
-    date: "Mar 2026",
-    items: [
-      "Fitur rekam audio dengan waveform visual",
-      "Tambah foto CDB dari kamera / galeri",
-      "Preview foto sebelum upload",
-      "Perbaikan stabilitas koneksi backend",
+      "Perbaikan Bug Google API",
+      "Peningkatan Upload Audio dan Foto",
+      "Dark/Light Mode",
+      "Animasi Loading Overlay Baru",
     ],
   },
   {
     version: "2.0.0",
-    date: "Feb 2026",
+    date: "Mar 2026",
+    items: [
+      "Fitur Rekam Audio dengan Waveform Visual",
+      "Tambah Foto CDB dari Kamera",
+      "Preview Foto Sebelum Upload",
+      "Perbaikan Stabilitas Koneksi Backend",
+    ],
+  },
+  {
+    version: "1.0.0",
+    date: "Mar 2026",
     items: [
       "Rilis awal HAVOC",
-      "Login dengan akun Sales People",
-      "Form data konsumen dasar",
-      "Dukungan Android & iOS",
+      "Penambahan Menu Login dan Daftar",
+      "Form Data Konsumen Dasar",
+      "Dukungan Android & iOS via PWA",
     ],
   },
 ];
 
 // ─── Main Screen ──────────────────────────────────────────────
-export default function TentangScreen() {
+export default memo(function TentangScreen() {
   const router = useRouter();
-  const { C, mode, toggleTheme } = useTheme();
+  const { C, mode } = useTheme();
   const isDark = mode === "dark";
 
   const [activeVersion, setActiveVersion] = useState(0);
@@ -114,6 +119,17 @@ export default function TentangScreen() {
     }
   };
 
+  const handleEmailDev = () => {
+    const email = "ragashhmunthe@gmail.com";
+    const subject = encodeURIComponent("HAVOC App - Feedback / Laporan Bug");
+    const body = encodeURIComponent("Halo Ahmad Ragash,\n\nSaya ingin menyampaikan:\n\n");
+    const gmailUrl = `googlegmail://co?to=${email}&subject=${subject}&body=${body}`;
+    const mailtoUrl = `mailto:${email}?subject=${subject}&body=${body}`;
+    Linking.canOpenURL(gmailUrl)
+      .then(supported => Linking.openURL(supported ? gmailUrl : mailtoUrl))
+      .catch(() => Linking.openURL(mailtoUrl));
+  };
+
   const isChecking = updateStatus === "checking";
   const isLatestOk = updateStatus === "latest";
   const hasUpdate = updateStatus === "update";
@@ -128,16 +144,14 @@ export default function TentangScreen() {
           <Ionicons name="chevron-back" size={18} color={C.textPrimary} />
         </TouchableOpacity>
         <Text style={[s.headerTitle, { color: C.textPrimary }]}>Tentang Aplikasi</Text>
-        <TouchableOpacity style={[s.iconBtn, { borderColor: getBorder(isDark) }]} onPress={toggleTheme} activeOpacity={0.7}>
-          <Ionicons name={isDark ? "sunny" : "moon"} size={16} color={C.textSecondary} />
-        </TouchableOpacity>
+        <View style={{ width: 34 }} />
       </View>
 
       <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
         {/* ── App Identity — logo kecil horizontal ── */}
         <View style={[s.identityCard, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
-          <Image source={require("../assets/images/logo.png")} style={s.logo} resizeMode="contain" />
+          <Image source={require("../assets/images/logo.png")} style={s.logo} resizeMode="contain" fadeDuration={0} />
           <View style={s.identityInfo}>
             <Text style={[s.appName, { color: C.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>Honda Visual On-site Capture</Text>
             <View style={s.identityRow}>
@@ -188,7 +202,10 @@ export default function TentangScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[s.devName, { color: C.textPrimary }]}>Ahmad Ragash Putra</Text>
-              <Text style={[s.devEmail, { color: C.accentDrive }]}>ragashhmunthe@gmail.com</Text>
+              <TouchableOpacity onPress={handleEmailDev} activeOpacity={0.7} style={s.emailBtn}>
+                <Ionicons name="mail" size={14} color={C.accentDrive} style={{ paddingTop: 2 }} />
+                <Text style={[s.devEmail, { color: C.accentDrive }]}>ragashhmunthe@gmail.com</Text>
+              </TouchableOpacity>
             </View>
             <View style={[s.rolePill, { backgroundColor: C.stripBg }]}>
               <Text style={[s.roleText, { color: C.textSecondary }]}>Developer</Text>
@@ -272,7 +289,7 @@ export default function TentangScreen() {
       </ScrollView>
     </SafeAreaView>
   );
-}
+});
 
 // ─── Styles ───────────────────────────────────────────────────
 const s = StyleSheet.create({
@@ -290,7 +307,7 @@ const s = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 14,
     padding: 14, borderRadius: 14, borderWidth: 1.5,
   },
-  logo: { width: 64, height: 64, borderRadius: 12 },
+  logo: { width: 64, height: 64 },
   identityInfo: { flex: 1, gap: 8 },
   appName: { fontSize: 15, fontWeight: "900", lineHeight: 20 },
   identityRow: { flexDirection: "row", alignItems: "center", gap: 7, flexWrap: "wrap" },
@@ -310,8 +327,9 @@ const s = StyleSheet.create({
   devRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   devAvatar: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
   devAvatarText: { fontSize: 16, fontWeight: "900" },
-  devName: { fontSize: 13, fontWeight: "800" },
-  devEmail: { fontSize: 11, marginTop: 1, fontWeight: "600" },
+  devName: { fontSize: 15, fontWeight: "800" },
+  devEmail: { fontSize: 14, fontWeight: "600" },
+  emailBtn: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 0 },
   rolePill: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
   roleText: { fontSize: 13, fontWeight: "700" },
 

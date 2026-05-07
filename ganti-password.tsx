@@ -105,15 +105,15 @@ export default function GantiPasswordScreen() {
           ))}
 
           <TouchableOpacity
-            style={[s.btnPrimary, { backgroundColor: C.primary, opacity: saving ? 0.7 : 1 }]}
+            style={[s.btnPrimary, { backgroundColor: C.accentDrive + "dd", opacity: saving ? 0.7 : 1 }]}
             onPress={onSubmit}
             disabled={saving}
             activeOpacity={0.8}
           >
-            {saving ? <ActivityIndicator color={C.primaryFg} /> : (
+            {saving ? <ActivityIndicator color="#FFF" /> : (
               <>
-                <Ionicons name="checkmark" size={16} color={C.primaryFg} />
-                <Text style={[s.btnPrimaryText, { color: C.primaryFg }]}>Ganti Password</Text>
+                <Ionicons name="checkmark" size={16} color="#FFF" />
+                <Text style={[s.btnPrimaryText, { color: "#FFF" }]}>Ganti Password</Text>
               </>
             )}
           </TouchableOpacity>

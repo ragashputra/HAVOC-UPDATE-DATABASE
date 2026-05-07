@@ -8,12 +8,34 @@
     "scheme": "voicerecordcustomerhonda",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash_light.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF",
+      "dark": {
+        "image": "./assets/images/splash_dark.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#000000"
+      }
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.capelladinamiknusantara.audioarchiver",
       "buildNumber": "3",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Rekam suara konsumen untuk dokumentasi servis"
+      },
+      "splash": {
+        "image": "./assets/images/splash_light.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#FFFFFF",
+        "tabletImage": "./assets/images/splash_light.png",
+        "dark": {
+          "image": "./assets/images/splash_dark.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#000000",
+          "tabletImage": "./assets/images/splash_dark.png"
+        }
       }
     },
     "android": {
@@ -24,9 +46,30 @@
         "backgroundColor": "#e02010"
       },
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "splash": {
+        "image": "./assets/images/splash_light.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#FFFFFF",
+        "mdpi":    "./assets/images/splash_light.png",
+        "hdpi":    "./assets/images/splash_light.png",
+        "xhdpi":   "./assets/images/splash_light.png",
+        "xxhdpi":  "./assets/images/splash_light.png",
+        "xxxhdpi": "./assets/images/splash_light.png",
+        "dark": {
+          "image": "./assets/images/splash_dark.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#000000",
+          "mdpi":    "./assets/images/splash_dark.png",
+          "hdpi":    "./assets/images/splash_dark.png",
+          "xhdpi":   "./assets/images/splash_dark.png",
+          "xxhdpi":  "./assets/images/splash_dark.png",
+          "xxxhdpi": "./assets/images/splash_dark.png"
+        }
+      }
     },
     "web": {
       "bundler": "metro",
@@ -36,12 +79,9 @@
     "plugins": [
       "expo-router",
       [
-        "expo-splash-screen",
+        "expo-system-ui",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#e02010"
+          "backgroundColor": "#09090B"
         }
       ],
       [
@@ -63,8 +103,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": ""
-      }
+        "projectId": "aaf622f0-9bc1-47a5-b3fe-78799ebf4825"
+      },
+      "router": {}
     }
   }
 }

@@ -1,5 +1,5 @@
 // ============================================================
-// index.tsx — UPDATED v2.3.0
+// index.tsx — UPDATED v3.0.1
 // Perubahan:
 //  1. Nama aplikasi → Honda Visual On-site Capture (HVOC)
 //  2. No mesin 13 karakter, indikator hijau/merah, hapus hint
@@ -33,15 +33,15 @@ import { useAuth, APP_BACKEND_URL, authFetch } from "../lib/auth";
 import { useTheme } from "../lib/theme";
 
 // ─── App version ──────────────────────────────────────────────
-const APP_VERSION = "2.3.0";
+const APP_VERSION = "3.0.1";
 const WHATS_NEW_KEY = `whats_new_seen_v${APP_VERSION}`;
 const WHATS_NEW_ITEMS = [
-  "Nama aplikasi: Honda Visual On-site Capture",
-  "Nomor mesin kini 13 karakter dengan indikator",
-  "Waveform & timer rekam warna hijau",
-  "Ikon Drive glowing hijau/merah",
-  "Poin verifikasi konsumen diperbarui",
-  "Playback seek bar diperbaiki",
+  "Simple User Interface (UI)",
+  "Scrolling lebih smooth dengan efek transisi animasi halus",
+  "Notifikasi popup skip upload file audio/foto CDB",
+  "Tombol pencarian pada menu riwayat",
+  "Browse file audio dan gambar",
+  "Perbaikan bug dan pembaruan minor lainnya",
 ];
 
 const GREEN = "#16a34a";
@@ -126,10 +126,10 @@ const wn = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)", alignItems: "center", justifyContent: "center", padding: 28 },
   card: { width: "100%", maxWidth: 340, borderRadius: 20, borderWidth: 1.5, padding: 20, alignItems: "flex-start", gap: 4 },
   iconRow: { flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start" },
-  title: { fontSize: 18, fontWeight: "900" },
+  title: { fontSize: 16, fontWeight: "900" },
   itemRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   dot: { width: 5, height: 5, borderRadius: 3 },
-  itemText: { fontSize: 14, lineHeight: 20, flex: 1 },
+  itemText: { fontSize: 12, lineHeight: 18, flex: 1 },
   btn: { marginTop: 14, width: "100%", height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   btnText: { fontSize: 14, fontWeight: "700" },
 });
@@ -311,7 +311,7 @@ export default function Index() {
 
   const [namaKonsumen, setNamaKonsumen] = useState("");
   const [nomorMesin, setNomorMesin] = useState("");
-  const [nomorMesinKeyboard, setNomorMesinKeyboard] = useState("default");
+  const [mesinKeyboardType, setMesinKeyboardType] = useState<"default" | "numeric">("default");
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingMs, setRecordingMs] = useState(0);
@@ -325,12 +325,17 @@ export default function Index() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadLabel, setUploadLabel] = useState("Mengupload...");
+  const [skipConfirmVisible, setSkipConfirmVisible] = useState(false);
+  const [skipConfirmMsg, setSkipConfirmMsg] = useState("");
 
   const [whatsNewVisible, setWhatsNewVisible] = useState(false);
 
   const recordingRef = useRef(null);
   const timerRef = useRef(null);
+  const mesinInputRef = useRef(null);
   const startTimeRef = useRef(0);
+
+
 
   // ── Poin verifikasi wajib baru (9 item, 2 kolom) ──
   const verifikasiItems = [
@@ -345,16 +350,21 @@ export default function Index() {
   ];
 
   // 13 karakter = 5 kode + 1 spasi + 7 angka (display) = raw 12
-  const mesinRaw = nomorMesin.replace(/\s/g, "");
+  const mesinRaw = nomorMesin; // already clean, no spaces
   const mesinValid = mesinRaw.length === 12;
   const mesinTyping = mesinRaw.length > 0 && mesinRaw.length < 12;
 
-  const canUpload = !!recordingUri && !!namaKonsumen.trim() && mesinValid && driveConnected;
+  const canUpload = !!namaKonsumen.trim() && mesinValid && driveConnected && (!!recordingUri || !!cdbPhoto);
 
   useEffect(() => {
-    AsyncStorage.getItem(WHATS_NEW_KEY).then(seen => {
-      if (!seen) setWhatsNewVisible(true);
-    });
+    // Delay supaya splash screen sudah benar-benar selesai
+    // sebelum modal WhatsNew muncul
+    const t = setTimeout(() => {
+      AsyncStorage.getItem(WHATS_NEW_KEY).then(seen => {
+        if (!seen) setWhatsNewVisible(true);
+      });
+    }, 600);
+    return () => clearTimeout(t);
   }, []);
 
   const closeWhatsNew = async () => {
@@ -418,10 +428,16 @@ export default function Index() {
   };
 
   const handleNomorMesinChange = (text) => {
-    const formatted = formatNomorMesin(text);
-    setNomorMesin(formatted);
-    const raw = formatted.replace(/\s/g, "");
-    setNomorMesinKeyboard(raw.length >= 5 ? "numeric" : "default");
+    const clean = text.replace(/\s/g, "").toUpperCase().slice(0, 12);
+    setNomorMesin(clean);
+    if (clean.length === 5 && mesinKeyboardType !== "numeric") {
+      setMesinKeyboardType("numeric");
+      // Refocus setelah switch keyboard supaya tidak hilang focus
+      setTimeout(() => mesinInputRef.current?.focus(), 50);
+    } else if (clean.length < 5 && mesinKeyboardType !== "default") {
+      setMesinKeyboardType("default");
+      setTimeout(() => mesinInputRef.current?.focus(), 50);
+    }
   };
 
   const startRecording = async () => {
@@ -430,7 +446,28 @@ export default function Index() {
       if (!granted) { Alert.alert("Izin Ditolak", "Izin mikrofon diperlukan untuk merekam."); return; }
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
       const rec = new Audio.Recording();
-      await rec.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await rec.prepareToRecordAsync({
+        android: {
+          extension: ".mp4",
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 44100,
+          numberOfChannels: 2,
+          bitRate: 128000,
+        },
+        ios: {
+          extension: ".mp4",
+          outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+          audioQuality: Audio.IOSAudioQuality.HIGH,
+          sampleRate: 44100,
+          numberOfChannels: 2,
+          bitRate: 128000,
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+        web: {},
+      });
       await rec.startAsync();
       recordingRef.current = rec;
       startTimeRef.current = Date.now();
@@ -458,7 +495,7 @@ export default function Index() {
       const ms = Date.now() - startTimeRef.current;
       setRecordingMs(ms);
       setRecordingUri(uri ?? null);
-      setRecordingName(`REK_${Date.now()}.m4a`);
+      setRecordingName(`REK_${Date.now()}.mp4`);
     } catch {}
     finally { recordingRef.current = null; }
   };
@@ -496,30 +533,31 @@ export default function Index() {
     } catch (e) { Alert.alert("Gagal", e?.message); }
   };
 
-  const handleUpload = async () => {
-    if (!canUpload) return;
+  const doUpload = async () => {
     const nama = namaKonsumen.trim();
-    const mesin = nomorMesin.replace(/\s/g, "");
+    const mesin = nomorMesin;
     if (mesin.length !== 12) { Alert.alert("Nomor Mesin", "Nomor mesin harus 12 karakter (5 kode + 8 angka)."); return; }
 
     setUploading(true);
     setUploadProgress(0);
-    setUploadLabel("Mengupload audio...");
 
     try {
-      const audioForm = new FormData();
-      audioForm.append("file", { uri: recordingUri, name: recordingName ?? "audio.m4a", type: "audio/m4a" });
-      audioForm.append("nama_konsumen", nama);
-      audioForm.append("nomor_mesin", mesin);
+      if (recordingUri) {
+        setUploadLabel("Mengupload audio...");
+        const audioForm = new FormData();
+        audioForm.append("file", { uri: recordingUri, name: recordingName ?? "audio.mp4", type: "audio/mp4" });
+        audioForm.append("nama_konsumen", nama);
+        audioForm.append("nomor_mesin", mesin);
 
-      const audioRes = await authFetch(token, `${APP_BACKEND_URL}/api/upload`, {
-        method: "POST",
-        body: audioForm,
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      if (!audioRes.ok) {
-        const d = await audioRes.json().catch(() => ({}));
-        throw new Error(typeof d.detail === "string" ? d.detail : "Upload audio gagal");
+        const audioRes = await authFetch(token, `${APP_BACKEND_URL}/api/upload`, {
+          method: "POST",
+          body: audioForm,
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        if (!audioRes.ok) {
+          const d = await audioRes.json().catch(() => ({}));
+          throw new Error(typeof d.detail === "string" ? d.detail : "Upload audio gagal");
+        }
       }
       setUploadProgress(0.6);
 
@@ -543,7 +581,7 @@ export default function Index() {
       setUploadProgress(1);
       setUploadLabel("Berhasil!");
       await new Promise(r => setTimeout(r, 600));
-      setNamaKonsumen(""); setNomorMesin(""); setRecordingUri(null); setRecordingName(null);
+      setNamaKonsumen(""); setNomorMesin(""); setMesinKeyboardType("default"); setRecordingUri(null); setRecordingName(null);
       setRecordingMs(0); setCdbPhoto(null); setCdbPhotoName(null);
       Alert.alert("Upload Berhasil! ✅", "Data berhasil dikirim ke Google Drive.");
     } catch (e) {
@@ -553,7 +591,21 @@ export default function Index() {
     }
   };
 
+  const handleUpload = () => {
+    if (!canUpload) return;
+    const missing: string[] = [];
+    if (!recordingUri) missing.push("Rekam Audio Belum Dilakukan");
+    if (!cdbPhoto) missing.push("Foto CDB Belum Dilakukan");
+    if (missing.length > 0) {
+      setSkipConfirmMsg(missing.join("\n"));
+      setSkipConfirmVisible(true);
+      return;
+    }
+    doUpload();
+  };
+
   return (
+    <>
     <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
 
       {/* ── NAVBAR ── */}
@@ -601,18 +653,14 @@ export default function Index() {
           {/* ── Drive Status — glowing icon ── */}
           <View style={[s.card, { backgroundColor: C.surface, borderColor: driveConnected ? GREEN + "99" : RED + "88" }]}>
             <View style={s.cardRow}>
-              {/* Ikon cloud glowing */}
+              {/* Ikon cloud */}
               <View style={[s.iconBox, {
                 backgroundColor: driveConnected ? GREEN + "22" : RED + "18",
-                shadowColor: driveConnected ? GREEN : RED,
-                shadowOpacity: 0.5,
-                shadowRadius: 8,
-                elevation: 4,
               }]}>
                 <Ionicons name="cloud" size={20} color={driveConnected ? GREEN : RED} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[s.cardTitle, { color: C.textPrimary }]}>Google Drive</Text>
+                <Text style={[s.cardTitle, { color: C.textPrimary }]}>{driveConnected ? "Google Drive Terhubung" : "Google Drive Tidak Terhubung"}</Text>
                 {checkingStatus
                   ? <ActivityIndicator size="small" color={C.textMuted} style={{ alignSelf: "flex-start", marginTop: 2 }} />
                   : <Text style={[s.cardSub, { color: driveConnected ? GREEN : RED, fontWeight: "700" }]}>
@@ -663,16 +711,23 @@ export default function Index() {
             </View>
 
             <Text style={[s.label, { color: getLabelColor(isDark) }]}>NAMA KONSUMEN</Text>
-            <TextInput
-              style={[s.input, { backgroundColor: C.inputBg, borderColor: namaKonsumen.trim().length >= 2 ? GREEN + "cc" : getBorder(isDark), color: C.textPrimary }]}
-              value={namaKonsumen}
-              onChangeText={handleNamaKonsumenChange}
-              placeholder="Contoh: AHMAD RAGASH PUTRA"
-              placeholderTextColor={getPlaceholderColor(isDark)}
-              autoCapitalize="characters"
-              editable={!uploading}
-              returnKeyType="next"
-            />
+            <View style={[s.inputRow, { backgroundColor: C.inputBg, borderColor: namaKonsumen.trim().length >= 2 ? GREEN + "cc" : getBorder(isDark) }]}>
+              <TextInput
+                style={[s.inputFlex, { color: C.textPrimary }]}
+                value={namaKonsumen}
+                onChangeText={handleNamaKonsumenChange}
+                placeholder="Contoh: AHMAD RAGASH PUTRA"
+                placeholderTextColor={getPlaceholderColor(isDark)}
+                autoCapitalize="characters"
+                editable={!uploading}
+                returnKeyType="next"
+              />
+              {namaKonsumen.length > 0 && !uploading && (
+                <TouchableOpacity style={s.clearBtn} onPress={() => setNamaKonsumen("")} activeOpacity={0.7}>
+                  <Ionicons name="close-circle" size={18} color={getLabelColor(isDark)} />
+                </TouchableOpacity>
+              )}
+            </View>
 
             {/* Nomor mesin — indikator hijau/merah */}
             <View style={s.mesinLabelRow}>
@@ -690,22 +745,29 @@ export default function Index() {
                 </View>
               )}
             </View>
-            <TextInput
-              style={[s.input, {
+            <View style={[s.inputRow, {
                 backgroundColor: C.inputBg,
                 borderColor: mesinValid ? GREEN + "cc" : mesinTyping ? RED + "bb" : getBorder(isDark),
-                color: C.textPrimary,
-              }]}
-              value={nomorMesin}
-              onChangeText={handleNomorMesinChange}
-              placeholder="Contoh: JMH2E 1234567"
-              placeholderTextColor={getPlaceholderColor(isDark)}
-              autoCapitalize="characters"
-              keyboardType={nomorMesinKeyboard}
-              maxLength={13}
-              editable={!uploading}
-              returnKeyType="done"
-            />
+              }]}>
+              <TextInput
+                ref={mesinInputRef}
+                style={[s.inputFlex, { color: C.textPrimary }]}
+                value={formatNomorMesin(nomorMesin)}
+                onChangeText={handleNomorMesinChange}
+                placeholder="Contoh: JMH2E 1234567"
+                placeholderTextColor={getPlaceholderColor(isDark)}
+                autoCapitalize={mesinKeyboardType === "numeric" ? "none" : "characters"}
+                keyboardType={mesinKeyboardType}
+                maxLength={13}
+                editable={!uploading}
+                returnKeyType="done"
+              />
+              {nomorMesin.length > 0 && !uploading && (
+                <TouchableOpacity style={s.clearBtn} onPress={() => { setNomorMesin(""); setMesinKeyboardType("default"); }} activeOpacity={0.7}>
+                  <Ionicons name="close-circle" size={18} color={getLabelColor(isDark)} />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
 
           {/* ── Rekam Audio ── */}
@@ -862,6 +924,7 @@ export default function Index() {
             )}
           </View>
 
+
           {/* ── Poin Verifikasi Wajib — 2 kolom compact ── */}
           <View style={[s.card, { backgroundColor: C.verifikasiBg, borderColor: getBorder(isDark), paddingVertical: 10 }]}>
             <View style={[s.cardRow, { marginBottom: 4 }]}>
@@ -880,23 +943,24 @@ export default function Index() {
 
           {/* ── Upload Button ── */}
           <TouchableOpacity
-            style={[s.uploadBtn, { backgroundColor: canUpload ? C.primary : C.border }]}
+            style={[s.uploadBtn, { backgroundColor: canUpload ? GREEN : C.border }]}
             onPress={handleUpload}
             disabled={!canUpload || uploading}
             activeOpacity={0.85}
           >
-            <Ionicons name="cloud-upload" size={20} color={canUpload ? C.primaryFg : C.textMuted} />
-            <Text style={[s.uploadBtnText, { color: canUpload ? C.primaryFg : C.textMuted }]}>
+            <Ionicons name="cloud-upload" size={20} color={canUpload ? "#FFFFFF" : C.textMuted} />
+            <Text style={[s.uploadBtnText, { color: canUpload ? "#FFFFFF" : C.textMuted }]}>
               Upload ke Drive
             </Text>
           </TouchableOpacity>
 
-          {!canUpload && (
+          {(!driveConnected || !namaKonsumen.trim() || !mesinValid || !recordingUri || !cdbPhoto) && (
             <View style={[s.hintBox, { backgroundColor: C.surface, borderColor: getBorder(isDark) }]}>
               {!driveConnected && <Text style={[s.hintItem, { color: C.textMuted }]}>• Hubungkan Google Drive terlebih dahulu</Text>}
               {!namaKonsumen.trim() && <Text style={[s.hintItem, { color: C.textMuted }]}>• Isi nama konsumen</Text>}
               {!mesinValid && <Text style={[s.hintItem, { color: C.textMuted }]}>• Nomor mesin harus 12 karakter</Text>}
-              {!recordingUri && <Text style={[s.hintItem, { color: C.textMuted }]}>• Rekam audio terlebih dahulu</Text>}
+              {!recordingUri && <Text style={[s.hintItem, { color: C.textMuted }]}>• Rekam audio belum dilakukan</Text>}
+              {!cdbPhoto && <Text style={[s.hintItem, { color: C.textMuted }]}>• Foto CDB belum diambil</Text>}
             </View>
           )}
 
@@ -917,9 +981,46 @@ export default function Index() {
         </TouchableOpacity>
       </Modal>
 
+      {/* Skip Confirmation Modal */}
+      <Modal visible={skipConfirmVisible} transparent animationType="fade" onRequestClose={() => setSkipConfirmVisible(false)}>
+        <View style={s.modalBackdrop}>
+          <View style={[s.skipModal, { backgroundColor: C.surface, borderColor: "#f59e0b" }]}>
+            <View style={[s.skipIconBox, { backgroundColor: "#f59e0b18" }]}>
+              <Ionicons name="warning" size={28} color="#f59e0b" />
+            </View>
+            <Text style={[s.skipTitle, { color: C.textPrimary }]}>Belum Lengkap</Text>
+            <View style={s.skipMsgBox}>
+              {skipConfirmMsg.split("\n").map((line, i) => (
+                <View key={i} style={s.skipMsgRow}>
+                  <Ionicons name="alert-circle-outline" size={15} color="#f59e0b" />
+                  <Text style={[s.skipMsgText, { color: C.textSecondary }]}>{line}</Text>
+                </View>
+              ))}
+            </View>
+            <Text style={[s.skipSubText, { color: C.textSecondary }]}>Upload tetap akan dilanjutkan hanya untuk file yang tersedia.</Text>
+            <TouchableOpacity
+              style={[s.skipBtnPrimary, { backgroundColor: C.primary }]}
+              onPress={() => { setSkipConfirmVisible(false); doUpload(); }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="cloud-upload-outline" size={16} color={C.primaryFg} />
+              <Text style={[s.skipBtnText, { color: C.primaryFg }]}>Tetap Lanjut</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.skipBtnOutline, { borderColor: getBorder(isDark) }]}
+              onPress={() => setSkipConfirmVisible(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={[s.skipBtnOutlineText, { color: C.textPrimary }]}>Kembali & Lengkapi</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <LoadingOverlay visible={uploading} label={uploadLabel} progress={uploadProgress} C={C} isDark={isDark} />
-      <WhatsNewModal visible={whatsNewVisible} onClose={closeWhatsNew} C={C} isDark={isDark} />
     </SafeAreaView>
+    <WhatsNewModal visible={whatsNewVisible} onClose={closeWhatsNew} C={C} isDark={isDark} />
+    </>
   );
 }
 
@@ -949,6 +1050,9 @@ const s = StyleSheet.create({
   sectionTitle: { fontSize: 13, fontWeight: "800" },
   label: { fontSize: 10, fontWeight: "700", letterSpacing: 1.1, marginTop: 4 },
   input: { height: 46, borderWidth: 2, borderRadius: 12, paddingHorizontal: 13, fontSize: 14, fontWeight: "600" },
+  inputRow: { flexDirection: "row", alignItems: "center", height: 46, borderWidth: 2, borderRadius: 12, overflow: "hidden" },
+  inputFlex: { flex: 1, height: 46, paddingHorizontal: 13, fontSize: 14, fontWeight: "600" },
+  clearBtn: { paddingHorizontal: 10, height: 46, alignItems: "center", justifyContent: "center" },
   mesinLabelRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
   mesinBadge: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, borderWidth: 1.5 },
   mesinBadgeText: { fontSize: 10, fontWeight: "700" },
@@ -970,6 +1074,18 @@ const s = StyleSheet.create({
   orLine: { flex: 1, height: 1 },
   orText: { fontSize: 13, fontWeight: "700" },
   browseHint: { fontSize: 12, fontWeight: "600", textAlign: "center", marginTop: 2 },
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", padding: 24 },
+  skipModal: { width: "100%", borderRadius: 20, borderWidth: 2, padding: 22, alignItems: "center", gap: 10 },
+  skipIconBox: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
+  skipTitle: { fontSize: 16, fontWeight: "800", textAlign: "center" },
+  skipMsgBox: { width: "100%", gap: 6 },
+  skipMsgRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  skipMsgText: { fontSize: 13, fontWeight: "600", flex: 1 },
+  skipSubText: { fontSize: 13, textAlign: "center", lineHeight: 18 },
+  skipBtnPrimary: { height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 7, width: "100%", marginTop: 2 },
+  skipBtnText: { fontWeight: "700", fontSize: 14 },
+  skipBtnOutline: { height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1.5, width: "100%" },
+  skipBtnOutlineText: { fontWeight: "600", fontSize: 13 },
   cdbReadyRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5 },
   cdbSiapBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   cdbSiapText: { fontSize: 11, fontWeight: "700" },

@@ -111,6 +111,7 @@ export default function HistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [deletingAll, setDeletingAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -164,6 +165,31 @@ export default function HistoryScreen() {
     ]);
   };
 
+  const onDeleteAll = () => {
+    if (items.length === 0) return;
+    Alert.alert(
+      "Hapus Semua Riwayat?",
+      `${items.length} data akan dihapus dari riwayat.\nFile di Drive TIDAK terhapus.`,
+      [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Hapus Semua", style: "destructive", onPress: async () => {
+            setDeletingAll(true);
+            try {
+              await Promise.all(
+                items.map(item =>
+                  authFetch(token, `${APP_BACKEND_URL}/api/uploads/${item.id}`, { method: "DELETE" })
+                )
+              );
+              setItems([]);
+            } catch (e) { Alert.alert("Gagal", e?.message ?? "Tidak bisa menghapus semua"); }
+            finally { setDeletingAll(false); }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
       {/* Header */}
@@ -179,6 +205,19 @@ export default function HistoryScreen() {
             </Text>
           )}
         </View>
+        {items.length > 0 && (
+          <TouchableOpacity
+            style={[s.deleteAllBtn, { borderColor: "#dc262666", backgroundColor: "#dc262610" }]}
+            onPress={onDeleteAll}
+            disabled={deletingAll}
+            activeOpacity={0.7}
+          >
+            {deletingAll
+              ? <ActivityIndicator size="small" color="#dc2626" />
+              : <Ionicons name="trash-outline" size={14} color="#dc2626" />}
+            <Text style={s.deleteAllText}>Hapus Semua</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Search Bar — clearButtonMode dihapus, pakai tombol X manual saja */}
@@ -260,6 +299,8 @@ const s = StyleSheet.create({
   safe: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 12, borderBottomWidth: 1 },
   iconBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1 },
+  deleteAllBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1.5 },
+  deleteAllText: { fontSize: 12, fontWeight: "700", color: "#dc2626" },
   headerTitle: { fontSize: 15, fontWeight: "800" },
   headerSub: { fontSize: 13, fontWeight: "600", marginTop: 1 },
   searchContainer: { paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1 },

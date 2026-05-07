@@ -2,10 +2,10 @@
 // login.tsx — UPDATED v2.3.0
 // Nama aplikasi → Honda Visual On-site Capture
 // ============================================================
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Alert,
+  KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Alert, Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Link } from "expo-router";
@@ -39,6 +39,16 @@ export default function LoginScreen() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(24)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 350, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
   const onSubmit = async () => {
     if (!email.trim() || !password) { setErr("Email dan password wajib diisi"); return; }
     setErr(null); setBusy(true);
@@ -53,6 +63,7 @@ export default function LoginScreen() {
     <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], width: "100%", alignItems: "center" }}>
           <Text style={[s.brand, { color: C.textPrimary }]}>Honda Visual On-site Capture</Text>
           <Text style={[s.brandSub, { color: C.textSecondary }]}>PT Capella Dinamik Nusantara</Text>
 
@@ -96,12 +107,12 @@ export default function LoginScreen() {
             )}
 
             <TouchableOpacity
-              style={[s.btnPrimary, { backgroundColor: C.primary, opacity: busy ? 0.7 : 1 }]}
+              style={[s.btnPrimary, { backgroundColor: C.accentDrive + "dd", opacity: busy ? 0.7 : 1 }]}
               onPress={onSubmit}
               disabled={busy}
               activeOpacity={0.8}
             >
-              {busy ? <ActivityIndicator color={C.primaryFg} /> : <Text style={[s.btnPrimaryText, { color: C.primaryFg }]}>Masuk</Text>}
+              {busy ? <ActivityIndicator color="#FFF" /> : <Text style={[s.btnPrimaryText, { color: "#FFF" }]}>Masuk</Text>}
             </TouchableOpacity>
 
             <TouchableOpacity style={s.forgotBtn}>
@@ -111,12 +122,15 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
+          </Animated.View>
+          <Animated.View style={{ opacity: fadeAnim, width: "100%" }}>
           <View style={s.row}>
             <Text style={[s.muted, { color: C.textSecondary }]}>Belum punya akun? </Text>
             <Link href="/register">
               <Text style={[s.link, { color: C.primary }]}>Daftar di sini</Text>
             </Link>
           </View>
+          </Animated.View>
 
         </ScrollView>
       </KeyboardAvoidingView>
@@ -132,7 +146,7 @@ const s = StyleSheet.create({
   card: { width: "100%", borderRadius: 20, borderWidth: 1.5, padding: 22, gap: 4 },
   title: { fontSize: 26, fontWeight: "800", marginBottom: 2 },
   sub: { fontSize: 16, marginBottom: 16 },
-  label: { fontSize: 10, fontWeight: "700", letterSpacing: 1.2, marginBottom: 6, marginTop: 8 },
+  label: { fontSize: 12, fontWeight: "700", letterSpacing: 1.2, marginBottom: 6, marginTop: 8 },
   input: { height: 48, borderWidth: 2, borderRadius: 12, paddingHorizontal: 14, fontSize: 15, fontWeight: "500" },
   pwdRow: { flexDirection: "row", alignItems: "center", height: 48, borderWidth: 2, borderRadius: 12, overflow: "hidden" },
   pwdInput: { flex: 1, height: 48, paddingHorizontal: 14, fontSize: 15, fontWeight: "500" },
@@ -142,8 +156,8 @@ const s = StyleSheet.create({
   btnPrimary: { marginTop: 18, height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   btnPrimaryText: { fontWeight: "700", fontSize: 15 },
   row: { flexDirection: "row", justifyContent: "center", marginTop: 20, flexWrap: "wrap" },
-  muted: { fontSize: 13 },
-  link: { fontWeight: "700", fontSize: 13 },
+  muted: { fontSize: 16 },
+  link: { fontWeight: "700", fontSize: 16 },
   forgotBtn: { alignSelf: "center", paddingVertical: 10, marginTop: 4 },
-  forgotText: { fontSize: 13 },
+  forgotText: { fontSize: 15 },
 });

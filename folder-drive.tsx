@@ -99,15 +99,15 @@ export default function FolderDriveScreen() {
           ) : null}
 
           <TouchableOpacity
-            style={[s.btnPrimary, { backgroundColor: C.primary, opacity: saving ? 0.7 : 1 }]}
+            style={[s.btnPrimary, { backgroundColor: C.accentDrive + "dd", opacity: saving ? 0.7 : 1 }]}
             onPress={onSave}
             disabled={saving}
             activeOpacity={0.8}
           >
-            {saving ? <ActivityIndicator color={C.primaryFg} /> : (
+            {saving ? <ActivityIndicator color="#FFF" /> : (
               <>
-                <Ionicons name="save" size={16} color={C.primaryFg} />
-                <Text style={[s.btnPrimaryText, { color: C.primaryFg }]}>Simpan Folder</Text>
+                <Ionicons name="save" size={16} color="#FFF" />
+                <Text style={[s.btnPrimaryText, { color: "#FFF" }]}>Simpan Folder</Text>
               </>
             )}
           </TouchableOpacity>
@@ -135,12 +135,12 @@ export default function FolderDriveScreen() {
           ))}
 
           <TouchableOpacity
-            style={[s.btnOutline, { borderColor: C.accentDrive }]}
+            style={[s.btnPrimary, { backgroundColor: C.accentDrive + "dd" }]}
             onPress={() => Linking.openURL("https://drive.google.com")}
             activeOpacity={0.8}
           >
-            <Ionicons name="open-outline" size={16} color={C.accentDrive} />
-            <Text style={[s.btnOutlineText, { color: C.accentDrive }]}>Buka Google Drive</Text>
+            <Ionicons name="open-outline" size={16} color="#FFF" />
+            <Text style={[s.btnPrimaryText, { color: "#FFF" }]}>Buka Google Drive</Text>
           </TouchableOpacity>
         </View>
 

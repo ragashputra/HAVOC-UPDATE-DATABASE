@@ -143,15 +143,15 @@ export default function ProfileScreen() {
           <Text style={[s.hint, { color: getLabelColor(isDark) }]}>Nama cabang/unit usaha tempat bertugas.</Text>
 
           <TouchableOpacity
-            style={[s.btnPrimary, { backgroundColor: C.primary, opacity: savingProfile ? 0.7 : 1 }]}
+            style={[s.btnPrimary, { backgroundColor: C.accentDrive + "dd", opacity: savingProfile ? 0.7 : 1 }]}
             onPress={onSaveProfile}
             disabled={savingProfile}
             activeOpacity={0.8}
           >
-            {savingProfile ? <ActivityIndicator color={C.primaryFg} /> : (
+            {savingProfile ? <ActivityIndicator color="#FFF" /> : (
               <>
-                <Ionicons name="checkmark" size={16} color={C.primaryFg} />
-                <Text style={[s.btnPrimaryText, { color: C.primaryFg }]}>Simpan Profil</Text>
+                <Ionicons name="checkmark" size={16} color="#FFF" />
+                <Text style={[s.btnPrimaryText, { color: "#FFF" }]}>Simpan Profil</Text>
               </>
             )}
           </TouchableOpacity>
@@ -184,15 +184,15 @@ export default function ProfileScreen() {
           </View>
 
           <TouchableOpacity
-            style={[s.btnPrimary, { backgroundColor: C.primary, opacity: generatingToken ? 0.7 : 1 }]}
+            style={[s.btnPrimary, { backgroundColor: C.accentDrive + "dd", opacity: generatingToken ? 0.7 : 1 }]}
             onPress={onPressGenerate}
             disabled={generatingToken}
             activeOpacity={0.8}
           >
-            {generatingToken ? <ActivityIndicator color={C.primaryFg} /> : (
+            {generatingToken ? <ActivityIndicator color="#FFF" /> : (
               <>
-                <Ionicons name="key" size={16} color={C.primaryFg} />
-                <Text style={[s.btnPrimaryText, { color: C.primaryFg }]}>
+                <Ionicons name="key" size={16} color="#FFF" />
+                <Text style={[s.btnPrimaryText, { color: "#FFF" }]}>
                   {recoveryStatus?.has_token ? "Generate Ulang" : "Generate Kode"}
                 </Text>
               </>

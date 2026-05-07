@@ -1,0 +1,22 @@
+{
+  "name": "Voice Recorder Customer Honda",
+  "short_name": "Voice Recorder Customer Honda",
+  "description": "Aplikasi rekam suara konsumen Honda - PT Capella Dinamik Nusantara",
+  "start_url": "/Ragash1993/pwa",
+  "display": "standalone",
+  "background_color": "#18181B",
+  "theme_color": "#18181B",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
